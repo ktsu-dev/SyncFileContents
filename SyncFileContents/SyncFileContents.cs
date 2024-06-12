@@ -1,7 +1,7 @@
 [assembly: CLSCompliant(true)]
 [assembly: System.Runtime.InteropServices.ComVisible(false)]
 
-namespace SyncFileContents;
+namespace ktsu.io.SyncFileContents;
 
 using System.Collections.ObjectModel;
 using System.Diagnostics;
@@ -11,49 +11,82 @@ using System.Security.Cryptography;
 using System.Text;
 using CommandLine;
 using LibGit2Sharp;
+using PrettyPrompt;
 
-internal class SyncFileContents
+internal static class SyncFileContents
 {
-	internal class Options
-	{
-		[Value(0, HelpText = "The path to recursively scan in.")]
-		public string Path { get; set; } = string.Empty;
+	private static async Task Main(string[] args) =>
+		await Parser.Default.ParseArguments<Arguments>(args).WithParsedAsync(Sync);
 
-		[Value(1, HelpText = "The filename to scan for.")]
-		public string Filename { get; set; } = string.Empty;
-	}
-
-	private static void Main(string[] args) =>
-		Parser.Default.ParseArguments<Options>(args).WithParsed(Sync);
-
-	internal static void Sync(Options options)
+	internal static async Task Sync(Arguments args)
 	{
 
-		if (string.IsNullOrEmpty(options.Path))
+		string appdataPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), nameof(SyncFileContents));
+		Directory.CreateDirectory(appdataPath);
+		if (string.IsNullOrEmpty(args.Path))
 		{
-			Console.WriteLine("Path:");
-			options.Path = Console.ReadLine() ?? string.Empty;
+			Console.WriteLine($"Path:");
+			await using var prompt = new Prompt(persistentHistoryFilepath: $"{appdataPath}/history-path");
+
+			while (true)
+			{
+				var response = await prompt.ReadLineAsync().ConfigureAwait(false);
+				if (response.IsSuccess)
+				{
+					args.Path = response.Text;
+					break;
+				}
+
+				if (response.CancellationToken.IsCancellationRequested)
+				{
+					Console.WriteLine("Aborted.");
+					return;
+				}
+			}
 		}
 
-		if (string.IsNullOrEmpty(options.Filename))
+		if (string.IsNullOrEmpty(args.Filename))
 		{
-			Console.WriteLine("Filename:");
-			options.Filename = Console.ReadLine() ?? string.Empty;
+			Console.WriteLine($"Filename:");
+			await using var prompt = new Prompt(persistentHistoryFilepath: $"{appdataPath}/history-filename");
+
+			while (true)
+			{
+				var response = await prompt.ReadLineAsync().ConfigureAwait(false);
+				if (response.IsSuccess)
+				{
+					args.Filename = response.Text;
+					break;
+				}
+
+				if (response.CancellationToken.IsCancellationRequested)
+				{
+					Console.WriteLine("Aborted.");
+					return;
+				}
+			}
+
+			args.Filename = Path.GetFileName(args.Filename);
 		}
 
-		if (!Directory.Exists(options.Path))
+		if (!Directory.Exists(args.Path))
 		{
-			Console.WriteLine($"Path does not exist. <{options.Path}>");
+			Console.WriteLine($"Path does not exist. <{args.Path}>");
 			return;
 		}
 
-		if (string.IsNullOrEmpty(options.Filename))
+		if (string.IsNullOrEmpty(args.Filename))
 		{
 			Console.WriteLine("Filename is empty.");
 			return;
 		}
 
-		var fileEnumeration = Directory.EnumerateFiles(options.Path, options.Filename, SearchOption.AllDirectories);
+		Console.WriteLine();
+		Console.WriteLine($"Scanning for: {args.Filename}");
+		Console.WriteLine($"In: {args.Path}");
+		Console.WriteLine();
+
+		var fileEnumeration = Directory.EnumerateFiles(args.Path, args.Filename, SearchOption.AllDirectories);
 
 		var results = new Dictionary<string, Collection<string>>();
 
@@ -63,7 +96,7 @@ internal class SyncFileContents
 		{
 			using var fileStream = new FileStream(file, FileMode.Open);
 			fileStream.Position = 0;
-			byte[] hash = sha256.ComputeHash(fileStream);
+			byte[] hash = await sha256.ComputeHashAsync(fileStream);
 			string hashStr = HashToString(hash);
 			if (!results.TryGetValue(hashStr, out var result))
 			{
@@ -71,7 +104,7 @@ internal class SyncFileContents
 				results.Add(hashStr, result);
 			}
 
-			result.Add(file.Replace(options.Path, "").Replace(options.Filename, "").Trim(Path.DirectorySeparatorChar));
+			result.Add(file.Replace(args.Path, "").Replace(args.Filename, "").Trim(Path.DirectorySeparatorChar));
 		}
 
 		var allDirs = results.SelectMany(r => r.Value);
@@ -88,7 +121,7 @@ internal class SyncFileContents
 				Console.WriteLine(hash);
 				foreach (string dir in relativeDirs)
 				{
-					string filepath = Path.Combine(options.Path, dir, options.Filename);
+					string filepath = Path.Combine(args.Path, dir, args.Filename);
 					var fileInfo = new FileInfo(filepath);
 					var created = fileInfo.CreationTime;
 					var modified = fileInfo.LastWriteTime;
@@ -108,11 +141,11 @@ internal class SyncFileContents
 				{
 					Debug.Assert(sourceDirs.Count > 0);
 					string sourceDir = sourceDirs[0];
-					string sourceFile = Path.Combine(options.Path, sourceDir, options.Filename);
+					string sourceFile = Path.Combine(args.Path, sourceDir, args.Filename);
 
 					foreach (string dir in destinationDirs)
 					{
-						string destinationFile = Path.Combine(options.Path, dir, options.Filename);
+						string destinationFile = Path.Combine(args.Path, dir, args.Filename);
 						Console.WriteLine($"Dry run: From {sourceDir} to {destinationFile}");
 					}
 
@@ -124,7 +157,7 @@ internal class SyncFileContents
 						Console.WriteLine();
 						foreach (string dir in destinationDirs)
 						{
-							string destinationFile = Path.Combine(options.Path, dir, options.Filename);
+							string destinationFile = Path.Combine(args.Path, dir, args.Filename);
 							Console.WriteLine($"Copying: From {sourceDir} to {destinationFile}");
 							File.Copy(sourceFile, destinationFile, true);
 						}
@@ -152,8 +185,8 @@ internal class SyncFileContents
 
 		foreach (string? dir in allDirs)
 		{
-			string directoryPath = Path.Combine(options.Path, dir);
-			string filePath = Path.Combine(directoryPath, options.Filename);
+			string directoryPath = Path.Combine(args.Path, dir);
+			string filePath = Path.Combine(directoryPath, args.Filename);
 			string repoPath = Repository.Discover(filePath);
 			if (repoPath?.EndsWith(".git\\", StringComparison.Ordinal) ?? false) // dont try commit submodules
 			{
@@ -167,26 +200,30 @@ internal class SyncFileContents
 			}
 		}
 
-		Console.WriteLine();
-		Console.WriteLine("Enter Y to commit.");
-
-		if (Console.ReadLine()?.ToUpperInvariant() == "Y")
+		if (commitFiles.Count > 0)
 		{
 			Console.WriteLine();
-			foreach (string filePath in commitFiles)
+			Console.WriteLine("Enter Y to commit.");
+
+			if (Console.ReadLine()?.ToUpperInvariant() == "Y")
 			{
-				Console.WriteLine($"Committing: {filePath}");
-				string repoPath = Repository.Discover(filePath);
-				var repo = new Repository(repoPath);
-				string relativeFilePath = filePath.Replace(repoPath.Replace(".git\\", "", StringComparison.Ordinal), "", StringComparison.Ordinal);
-				repo.Index.Add(relativeFilePath);
-				try
+				Console.WriteLine();
+				foreach (string filePath in commitFiles)
 				{
-					_ = repo.Commit($"Sync {relativeFilePath}", new Signature("SyncFileContents", "SyncFileContents", DateTimeOffset.Now), new Signature("SyncFileContents", "SyncFileContents", DateTimeOffset.Now));
-				}
-				catch (EmptyCommitException)
-				{
-					continue;
+					Console.WriteLine($"Committing: {filePath}");
+					string repoPath = Repository.Discover(filePath);
+					var repo = new Repository(repoPath);
+					string relativeFilePath = filePath.Replace(repoPath.Replace(".git\\", "", StringComparison.Ordinal), "", StringComparison.Ordinal);
+					repo.Index.Add(relativeFilePath);
+					repo.Index.Write();
+					try
+					{
+						_ = repo.Commit($"Sync {relativeFilePath}", new Signature("SyncFileContents", "SyncFileContents", DateTimeOffset.Now), new Signature("SyncFileContents", "SyncFileContents", DateTimeOffset.Now));
+					}
+					catch (EmptyCommitException)
+					{
+						continue;
+					}
 				}
 			}
 		}
