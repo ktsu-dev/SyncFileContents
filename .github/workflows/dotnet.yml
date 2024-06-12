@@ -1,0 +1,16 @@
+name: Build and Analyze
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    types: [opened, synchronize, reopened]
+    
+permissions:
+  packages: write
+  contents: read
+  
+jobs:
+  build-dotnet-library:
+    uses: ktsu-io/workflows/.github/workflows/build-dotnet-library.yml@main
+    secrets: inherit
