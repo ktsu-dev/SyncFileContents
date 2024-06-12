@@ -17,10 +17,10 @@ internal class SyncFileContents
 	internal class Options
 	{
 		[Value(0, HelpText = "The path to recursively scan in.")]
-		public string Path { get; set; } = "c:\\dev\\ktsu-io";
+		public string Path { get; set; } = string.Empty;
 
 		[Value(1, HelpText = "The filename to scan for.")]
-		public string Filename { get; set; } = "Directory.Build.targets";
+		public string Filename { get; set; } = string.Empty;
 	}
 
 	private static void Main(string[] args) =>
