@@ -15,11 +15,68 @@ using PrettyPrompt;
 
 internal static class SyncFileContents
 {
-	private static async Task Main(string[] args) =>
-		await Parser.Default.ParseArguments<Arguments>(args).WithParsedAsync(Sync);
+	internal static Settings Settings { get; set; } = new();
+
+	private static async Task Main(string[] args)
+	{
+		Settings = Settings.LoadOrCreate();
+
+		GlobalSettings.LogConfiguration = new(LogLevel.Debug, new((level, message) =>
+		{
+			string logMessage = $"[{level}] {message}";
+			Console.WriteLine($"Git: {logMessage}");
+		}));
+
+		_ = await Parser.Default.ParseArguments<Arguments>(args).WithParsedAsync(Sync);
+	}
 
 	internal static async Task Sync(Arguments args)
 	{
+		if (string.IsNullOrEmpty(Settings.Username))
+		{
+			Console.WriteLine("Enter your git username:");
+			await using var prompt = new Prompt();
+
+			while (true)
+			{
+				var response = await prompt.ReadLineAsync().ConfigureAwait(false);
+				if (response.IsSuccess)
+				{
+					Settings.Username = response.Text;
+					Settings.Save();
+					break;
+				}
+
+				if (response.CancellationToken.IsCancellationRequested)
+				{
+					Console.WriteLine("Aborted.");
+					return;
+				}
+			}
+		}
+
+		if (string.IsNullOrEmpty(Settings.Token))
+		{
+			Console.WriteLine("Enter your git token:");
+			await using var prompt = new Prompt();
+
+			while (true)
+			{
+				var response = await prompt.ReadLineAsync().ConfigureAwait(false);
+				if (response.IsSuccess)
+				{
+					Settings.Token = response.Text;
+					Settings.Save();
+					break;
+				}
+
+				if (response.CancellationToken.IsCancellationRequested)
+				{
+					Console.WriteLine("Aborted.");
+					return;
+				}
+			}
+		}
 
 		string appdataPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), nameof(SyncFileContents));
 		Directory.CreateDirectory(appdataPath);
@@ -188,7 +245,7 @@ internal static class SyncFileContents
 			string directoryPath = Path.Combine(args.Path, dir);
 			string filePath = Path.Combine(directoryPath, args.Filename);
 			string repoPath = Repository.Discover(filePath);
-			if (repoPath?.EndsWith(".git\\", StringComparison.Ordinal) ?? false) // dont try commit submodules
+			if (repoPath?.EndsWith(".git\\", StringComparison.Ordinal) ?? false) // don't try commit submodules
 			{
 				var repo = new Repository(repoPath);
 				var fileStatus = repo.RetrieveStatus(filePath);
@@ -199,6 +256,8 @@ internal static class SyncFileContents
 				}
 			}
 		}
+
+
 
 		if (commitFiles.Count > 0)
 		{
@@ -218,11 +277,90 @@ internal static class SyncFileContents
 					repo.Index.Write();
 					try
 					{
-						_ = repo.Commit($"Sync {relativeFilePath}", new Signature("SyncFileContents", "SyncFileContents", DateTimeOffset.Now), new Signature("SyncFileContents", "SyncFileContents", DateTimeOffset.Now));
+						_ = repo.Commit($"Sync {relativeFilePath}", new Signature(nameof(SyncFileContents), nameof(SyncFileContents), DateTimeOffset.Now), new Signature(nameof(SyncFileContents), nameof(SyncFileContents), DateTimeOffset.Now));
 					}
 					catch (EmptyCommitException)
 					{
 						continue;
+					}
+				}
+			}
+		}
+
+		var pushDirs = new Collection<string>();
+
+		foreach (string dir in allDirs)
+		{
+			string directoryPath = Path.Combine(args.Path, dir);
+			string filePath = Path.Combine(directoryPath, args.Filename);
+			string repoPath = Repository.Discover(filePath);
+			if (repoPath?.EndsWith(".git\\", StringComparison.Ordinal) ?? false) // don't try commit submodules
+			{
+				var repo = new Repository(repoPath);
+
+				// check how far ahead we are
+				var localBranch = repo.Branches[repo.Head.FriendlyName];
+				int aheadBy = localBranch?.TrackingDetails.AheadBy ?? 0;
+
+				// check if all outstanding commits were made by this tool
+				int commitIndex = 0;
+				bool canPush = true;
+				foreach (var commit in repo.Head.Commits)
+				{
+					if (commitIndex < aheadBy)
+					{
+						if (commit.Author.Name != nameof(SyncFileContents))
+						{
+							canPush = false;
+							break;
+						}
+					}
+					else
+					{
+						break;
+					}
+					++commitIndex;
+				}
+
+				if (aheadBy > 0 && canPush)
+				{
+					pushDirs.Add(dir);
+					Console.WriteLine($"{dir} can be pushed automatically");
+				}
+			}
+		}
+
+		if (pushDirs.Count > 0)
+		{
+			Console.WriteLine();
+			Console.WriteLine("Enter Y to push.");
+
+			if (Console.ReadLine()?.ToUpperInvariant() == "Y")
+			{
+				Console.WriteLine();
+				foreach (string dir in pushDirs)
+				{
+					Console.WriteLine($"Pushing: {dir}");
+					string directoryPath = Path.Combine(args.Path, dir);
+					string repoPath = Repository.Discover(directoryPath);
+
+					var pushOptions = new PushOptions
+					{
+						CredentialsProvider = (url, user, cred) => new UsernamePasswordCredentials
+						{
+							Username = Settings.Username,
+							Password = Settings.Token,
+						},
+					};
+
+					var repo = new Repository(repoPath);
+					try
+					{
+						repo.Network.Push(repo.Head, pushOptions);
+					}
+					catch (LibGit2SharpException e)
+					{
+						Console.WriteLine($"Error pushing: {e.Message}");
 					}
 				}
 			}
