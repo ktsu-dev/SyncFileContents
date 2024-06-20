@@ -1,3 +1,5 @@
+// Ignore Spelling: sha
+
 [assembly: CLSCompliant(true)]
 [assembly: System.Runtime.InteropServices.ComVisible(false)]
 
@@ -78,12 +80,12 @@ internal static class SyncFileContents
 			}
 		}
 
-		string appdataPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), nameof(SyncFileContents));
-		Directory.CreateDirectory(appdataPath);
+		string applicationDataPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), nameof(SyncFileContents));
+		_ = Directory.CreateDirectory(applicationDataPath);
 		if (string.IsNullOrEmpty(args.Path))
 		{
 			Console.WriteLine($"Path:");
-			await using var prompt = new Prompt(persistentHistoryFilepath: $"{appdataPath}/history-path");
+			await using var prompt = new Prompt(persistentHistoryFilepath: $"{applicationDataPath}/history-path");
 
 			while (true)
 			{
@@ -105,7 +107,7 @@ internal static class SyncFileContents
 		if (string.IsNullOrEmpty(args.Filename))
 		{
 			Console.WriteLine($"Filename:");
-			await using var prompt = new Prompt(persistentHistoryFilepath: $"{appdataPath}/history-filename");
+			await using var prompt = new Prompt(persistentHistoryFilepath: $"{applicationDataPath}/history-filename");
 
 			while (true)
 			{
@@ -164,22 +166,22 @@ internal static class SyncFileContents
 			result.Add(file.Replace(args.Path, "").Replace(args.Filename, "").Trim(Path.DirectorySeparatorChar));
 		}
 
-		var allDirs = results.SelectMany(r => r.Value);
+		var allDirectories = results.SelectMany(r => r.Value);
 
 		if (results.Count > 1)
 		{
-			int padWidth = allDirs.Max(d => d.Length) + 4;
+			int padWidth = allDirectories.Max(d => d.Length) + 4;
 
 			results = results.OrderBy(r => r.Value.Count).ToDictionary(r => r.Key, r => r.Value);
 
-			foreach (var (hash, relativeDirs) in results)
+			foreach (var (hash, relativeDirectories) in results)
 			{
 				Console.WriteLine();
 				Console.WriteLine(hash);
-				foreach (string dir in relativeDirs)
+				foreach (string dir in relativeDirectories)
 				{
-					string filepath = Path.Combine(args.Path, dir, args.Filename);
-					var fileInfo = new FileInfo(filepath);
+					string filePath = Path.Combine(args.Path, dir, args.Filename);
+					var fileInfo = new FileInfo(filePath);
 					var created = fileInfo.CreationTime;
 					var modified = fileInfo.LastWriteTime;
 					Console.WriteLine($"{dir.PadLeft(padWidth)} {created,22} {modified,22}");
@@ -189,18 +191,19 @@ internal static class SyncFileContents
 			Console.WriteLine();
 
 
+
 			Console.WriteLine("Enter a hash to sync to, or return to quit:");
 			string syncHash = Console.ReadLine() ?? string.Empty;
 			if (!string.IsNullOrWhiteSpace(syncHash))
 			{
-				var destinationDirs = results.Where(r => r.Key != syncHash).SelectMany(r => r.Value);
-				if (results.TryGetValue(syncHash, out var sourceDirs))
+				var destinationDirectories = results.Where(r => r.Key != syncHash).SelectMany(r => r.Value);
+				if (results.TryGetValue(syncHash, out var sourceDirectories))
 				{
-					Debug.Assert(sourceDirs.Count > 0);
-					string sourceDir = sourceDirs[0];
+					Debug.Assert(sourceDirectories.Count > 0);
+					string sourceDir = sourceDirectories[0];
 					string sourceFile = Path.Combine(args.Path, sourceDir, args.Filename);
 
-					foreach (string dir in destinationDirs)
+					foreach (string dir in destinationDirectories)
 					{
 						string destinationFile = Path.Combine(args.Path, dir, args.Filename);
 						Console.WriteLine($"Dry run: From {sourceDir} to {destinationFile}");
@@ -212,7 +215,7 @@ internal static class SyncFileContents
 					if (Console.ReadLine()?.ToUpperInvariant() == "Y")
 					{
 						Console.WriteLine();
-						foreach (string dir in destinationDirs)
+						foreach (string dir in destinationDirectories)
 						{
 							string destinationFile = Path.Combine(args.Path, dir, args.Filename);
 							Console.WriteLine($"Copying: From {sourceDir} to {destinationFile}");
@@ -240,7 +243,7 @@ internal static class SyncFileContents
 
 		var commitFiles = new Collection<string>();
 
-		foreach (string? dir in allDirs)
+		foreach (string? dir in allDirectories)
 		{
 			string directoryPath = Path.Combine(args.Path, dir);
 			string filePath = Path.Combine(directoryPath, args.Filename);
@@ -287,9 +290,9 @@ internal static class SyncFileContents
 			}
 		}
 
-		var pushDirs = new Collection<string>();
+		var pushDirectories = new Collection<string>();
 
-		foreach (string dir in allDirs)
+		foreach (string dir in allDirectories)
 		{
 			string directoryPath = Path.Combine(args.Path, dir);
 			string filePath = Path.Combine(directoryPath, args.Filename);
@@ -324,13 +327,13 @@ internal static class SyncFileContents
 
 				if (aheadBy > 0 && canPush)
 				{
-					pushDirs.Add(dir);
+					pushDirectories.Add(dir);
 					Console.WriteLine($"{dir} can be pushed automatically");
 				}
 			}
 		}
 
-		if (pushDirs.Count > 0)
+		if (pushDirectories.Count > 0)
 		{
 			Console.WriteLine();
 			Console.WriteLine("Enter Y to push.");
@@ -338,7 +341,7 @@ internal static class SyncFileContents
 			if (Console.ReadLine()?.ToUpperInvariant() == "Y")
 			{
 				Console.WriteLine();
-				foreach (string dir in pushDirs)
+				foreach (string dir in pushDirectories)
 				{
 					Console.WriteLine($"Pushing: {dir}");
 					string directoryPath = Path.Combine(args.Path, dir);
@@ -346,10 +349,19 @@ internal static class SyncFileContents
 
 					var pushOptions = new PushOptions
 					{
-						CredentialsProvider = (url, user, cred) => new UsernamePasswordCredentials
+						CredentialsProvider = (url, user, credentials) => new UsernamePasswordCredentials
 						{
 							Username = Settings.Username,
 							Password = Settings.Token,
+						},
+						OnPushStatusError = (pushStatusErrors) =>
+						{
+							Console.WriteLine($"Error pushing: {pushStatusErrors.Message}");
+						},
+						OnPushTransferProgress = (current, total, bytes) =>
+						{
+							Console.WriteLine($"Progress: {current} / {total} ({bytes} bytes)");
+							return true;
 						},
 					};
 
