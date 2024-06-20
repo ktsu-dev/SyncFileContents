@@ -190,10 +190,20 @@ internal static class SyncFileContents
 
 			Console.WriteLine();
 
+			string syncHash;
 
+			var firstResult = results.First();
+			if (results.Count == 2 && firstResult.Value.Count == 1)
+			{
+				Console.WriteLine("Only one file was changed, assuming you want to propagate that one.");
+				syncHash = firstResult.Key;
+			}
+			else
+			{
+				Console.WriteLine("Enter a hash to sync to, or return to quit:");
+				syncHash = Console.ReadLine() ?? string.Empty;
+			}
 
-			Console.WriteLine("Enter a hash to sync to, or return to quit:");
-			string syncHash = Console.ReadLine() ?? string.Empty;
 			if (!string.IsNullOrWhiteSpace(syncHash))
 			{
 				var destinationDirectories = results.Where(r => r.Key != syncHash).SelectMany(r => r.Value);
