@@ -3,7 +3,7 @@
 [assembly: CLSCompliant(true)]
 [assembly: System.Runtime.InteropServices.ComVisible(false)]
 
-namespace ktsu.io.SyncFileContents;
+namespace ktsu.SyncFileContents;
 
 using System.Collections.ObjectModel;
 using System.Diagnostics;
@@ -292,6 +292,10 @@ internal static class SyncFileContents
 							_ = repo.Commit($"Sync {relativeFilePath}", new Signature(nameof(SyncFileContents), nameof(SyncFileContents), DateTimeOffset.Now), new Signature(nameof(SyncFileContents), nameof(SyncFileContents), DateTimeOffset.Now));
 						}
 						catch (EmptyCommitException)
+						{
+							continue;
+						}
+						catch (UnmergedIndexEntriesException)
 						{
 							continue;
 						}

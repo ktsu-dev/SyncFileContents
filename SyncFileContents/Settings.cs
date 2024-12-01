@@ -1,6 +1,6 @@
 // Ignore Spelling: Username
 
-namespace ktsu.io.SyncFileContents;
+namespace ktsu.SyncFileContents;
 
 internal class Settings : AppDataStorage.AppData<Settings>
 {

@@ -1,4 +1,4 @@
-namespace ktsu.io.SyncFileContents;
+namespace ktsu.SyncFileContents;
 
 using CommandLine;
 

@@ -1,4 +1,4 @@
-# ktsu.io.SignificanNumber
+# ktsu.SignificanNumber
 
 ## 1.1.0
 
