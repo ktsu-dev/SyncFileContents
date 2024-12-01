@@ -34,6 +34,7 @@ internal static class SyncFileContents
 
 	internal static async Task Sync(Arguments args)
 	{
+		HashSet<string> filesToSync = [];
 		string filename = args.Filename;
 		string path = args.Path;
 
@@ -109,28 +110,44 @@ internal static class SyncFileContents
 				}
 			}
 
-			if (string.IsNullOrWhiteSpace(filename))
+			if (!string.IsNullOrWhiteSpace(filename))
 			{
-				Console.WriteLine($"Filename:");
-				await using var prompt = new Prompt(persistentHistoryFilepath: $"{applicationDataPath}/history-filename");
-
+				_ = filesToSync.Add(filename);
+			}
+			else
+			{
 				while (true)
 				{
-					var response = await prompt.ReadLineAsync().ConfigureAwait(false);
-					if (response.IsSuccess)
+					Console.WriteLine($"Add Filename(s):");
+					await using var prompt = new Prompt(persistentHistoryFilepath: $"{applicationDataPath}/history-filename");
+
+					while (true)
 					{
-						filename = response.Text;
+						var response = await prompt.ReadLineAsync().ConfigureAwait(false);
+						if (response.IsSuccess)
+						{
+							filename = response.Text;
+							break;
+						}
+
+						if (response.CancellationToken.IsCancellationRequested)
+						{
+							Console.WriteLine("Aborted.");
+							return;
+						}
+					}
+
+					if (string.IsNullOrWhiteSpace(filename))
+					{
 						break;
 					}
 
-					if (response.CancellationToken.IsCancellationRequested)
+					foreach (string file in filename.Split(','))
 					{
-						Console.WriteLine("Aborted.");
-						return;
+						string newFile = Path.GetFileName(file);
+						_ = filesToSync.Add(newFile.Trim());
 					}
 				}
-
-				filename = Path.GetFileName(filename);
 			}
 
 			if (!Directory.Exists(path))
@@ -139,134 +156,142 @@ internal static class SyncFileContents
 				return;
 			}
 
-			if (string.IsNullOrWhiteSpace(filename))
+			if (filesToSync.Count < 1)
 			{
-				Console.WriteLine("Filename is empty.");
+				Console.WriteLine("No files specified.");
 				return;
 			}
 
-			Console.WriteLine();
-			Console.WriteLine($"Scanning for: {filename}");
-			Console.WriteLine($"In: {path}");
-			Console.WriteLine();
+			HashSet<string> commitDirectories = [];
 
-			var fileEnumeration = Directory.EnumerateFiles(path, filename, SearchOption.AllDirectories);
-
-			var results = new Dictionary<string, Collection<string>>();
-
-			using var sha256 = SHA256.Create();
-
-			foreach (string file in fileEnumeration)
+			foreach (string fileToSync in filesToSync)
 			{
-				using var fileStream = new FileStream(file, FileMode.Open);
-				fileStream.Position = 0;
-				byte[] hash = await sha256.ComputeHashAsync(fileStream);
-				string hashStr = HashToString(hash);
-				if (!results.TryGetValue(hashStr, out var result))
-				{
-					result = [];
-					results.Add(hashStr, result);
-				}
-
-				result.Add(file.Replace(path, "").Replace(filename, "").Trim(Path.DirectorySeparatorChar));
-			}
-
-			var allDirectories = results.SelectMany(r => r.Value);
-
-			if (results.Count > 1)
-			{
-				int padWidth = allDirectories.Max(d => d.Length) + 4;
-
-				results = results.OrderBy(r => r.Value.Count).ToDictionary(r => r.Key, r => r.Value);
-
-				foreach (var (hash, relativeDirectories) in results)
-				{
-					Console.WriteLine();
-					Console.WriteLine(hash);
-					foreach (string dir in relativeDirectories)
-					{
-						string filePath = Path.Combine(path, dir, filename);
-						var fileInfo = new FileInfo(filePath);
-						var created = fileInfo.CreationTime;
-						var modified = fileInfo.LastWriteTime;
-						Console.WriteLine($"{dir.PadLeft(padWidth)} {created,22} {modified,22}");
-					}
-				}
-
+				Console.WriteLine();
+				Console.WriteLine($"Scanning for: {fileToSync}");
+				Console.WriteLine($"In: {path}");
 				Console.WriteLine();
 
-				string syncHash;
+				var fileEnumeration = Directory.EnumerateFiles(path, fileToSync, SearchOption.AllDirectories);
 
-				var firstResult = results.First();
-				if (results.Count == 2 && firstResult.Value.Count == 1)
-				{
-					Console.WriteLine("Only one file was changed, assuming you want to propagate that one.");
-					syncHash = firstResult.Key;
-				}
-				else
-				{
-					Console.WriteLine("Enter a hash to sync to, or return to quit:");
-					syncHash = Console.ReadLine() ?? string.Empty;
-				}
+				var results = new Dictionary<string, Collection<string>>();
 
-				if (!string.IsNullOrWhiteSpace(syncHash))
+				using var sha256 = SHA256.Create();
+
+				foreach (string file in fileEnumeration)
 				{
-					var destinationDirectories = results.Where(r => r.Key != syncHash).SelectMany(r => r.Value);
-					if (results.TryGetValue(syncHash, out var sourceDirectories))
+					using var fileStream = new FileStream(file, FileMode.Open);
+					fileStream.Position = 0;
+					byte[] hash = await sha256.ComputeHashAsync(fileStream);
+					string hashStr = HashToString(hash);
+					if (!results.TryGetValue(hashStr, out var result))
 					{
-						Debug.Assert(sourceDirectories.Count > 0);
-						string sourceDir = sourceDirectories[0];
-						string sourceFile = Path.Combine(path, sourceDir, filename);
+						result = [];
+						results.Add(hashStr, result);
+					}
 
-						foreach (string dir in destinationDirectories)
-						{
-							string destinationFile = Path.Combine(path, dir, filename);
-							Console.WriteLine($"Dry run: From {sourceDir} to {destinationFile}");
-						}
+					result.Add(file.Replace(path, "").Replace(fileToSync, "").Trim(Path.DirectorySeparatorChar));
+				}
 
+				var allDirectories = results.SelectMany(r => r.Value);
+				commitDirectories.UnionWith(allDirectories);
+				if (results.Count > 1)
+				{
+					int padWidth = allDirectories.Max(d => d.Length) + 4;
+
+					results = results.OrderBy(r => r.Value.Count).ToDictionary(r => r.Key, r => r.Value);
+
+					foreach (var (hash, relativeDirectories) in results)
+					{
 						Console.WriteLine();
-						Console.WriteLine("Enter Y to sync.");
-
-						if (Console.ReadLine()?.ToUpperInvariant() == "Y")
+						Console.WriteLine(hash);
+						foreach (string dir in relativeDirectories)
 						{
-							Console.WriteLine();
-							foreach (string dir in destinationDirectories)
-							{
-								string destinationFile = Path.Combine(path, dir, filename);
-								Console.WriteLine($"Copying: From {sourceDir} to {destinationFile}");
-								File.Copy(sourceFile, destinationFile, true);
-							}
+							string filePath = Path.Combine(path, dir, fileToSync);
+							var fileInfo = new FileInfo(filePath);
+							var created = fileInfo.CreationTime;
+							var modified = fileInfo.LastWriteTime;
+							Console.WriteLine($"{dir.PadLeft(padWidth)} {created,22} {modified,22}");
 						}
+					}
+
+					Console.WriteLine();
+
+					string syncHash;
+
+					var firstResult = results.First();
+					if (results.Count == 2 && firstResult.Value.Count == 1)
+					{
+						Console.WriteLine($"Only one file was changed for {fileToSync}, assuming you want to propagate that one.");
+						syncHash = firstResult.Key;
 					}
 					else
 					{
-						Console.WriteLine("Hash not found.");
+						Console.WriteLine("Enter a hash to sync to, or return to continue:");
+						syncHash = Console.ReadLine() ?? string.Empty;
+					}
+
+					if (!string.IsNullOrWhiteSpace(syncHash))
+					{
+						var destinationDirectories = results.Where(r => r.Key != syncHash).SelectMany(r => r.Value);
+						if (results.TryGetValue(syncHash, out var sourceDirectories))
+						{
+							Debug.Assert(sourceDirectories.Count > 0);
+							string sourceDir = sourceDirectories[0];
+							string sourceFile = Path.Combine(path, sourceDir, fileToSync);
+
+							foreach (string dir in destinationDirectories)
+							{
+								string destinationFile = Path.Combine(path, dir, fileToSync);
+								Console.WriteLine($"Dry run: From {sourceDir} to {destinationFile}");
+							}
+
+							Console.WriteLine();
+							Console.WriteLine("Enter Y to sync.");
+
+							if (Console.ReadLine()?.ToUpperInvariant() == "Y")
+							{
+								Console.WriteLine();
+								foreach (string dir in destinationDirectories)
+								{
+									string destinationFile = Path.Combine(path, dir, fileToSync);
+									Console.WriteLine($"Copying: From {sourceDir} to {destinationFile}");
+									File.Copy(sourceFile, destinationFile, true);
+								}
+							}
+						}
+						else
+						{
+							Console.WriteLine("Hash not found.");
+						}
 					}
 				}
-			}
 
-			if (results.Count == 1)
-			{
-				Console.WriteLine("No outstanding files to sync.");
+				if (results.Count == 1)
+				{
+					Console.WriteLine($"No outstanding files to sync for: {fileToSync}.");
+				}
 			}
 
 			Console.WriteLine();
 
 			var commitFiles = new Collection<string>();
 
-			foreach (string? dir in allDirectories)
+			foreach (string? dir in commitDirectories)
 			{
 				string directoryPath = Path.Combine(path, dir);
-				string filePath = Path.Combine(directoryPath, filename);
-				string repoPath = Repository.Discover(filePath);
+				string repoPath = Repository.Discover(directoryPath);
 				if (repoPath?.EndsWith(".git\\", StringComparison.Ordinal) ?? false) // don't try commit submodules
 				{
 					var repo = new Repository(repoPath);
-					var fileStatus = repo.RetrieveStatus(filePath);
-					if (fileStatus != FileStatus.Unaltered)
+					foreach (string fileToSync in filesToSync)
 					{
-						commitFiles.Add(filePath);
-						Console.WriteLine($"{filePath} has outstanding changes");
+						string filePath = Path.Combine(directoryPath, fileToSync);
+						var fileStatus = repo.RetrieveStatus(filePath);
+						if (fileStatus != FileStatus.Unaltered)
+						{
+							commitFiles.Add(filePath);
+							Console.WriteLine($"{filePath} has outstanding changes");
+						}
 					}
 				}
 			}
@@ -283,21 +308,24 @@ internal static class SyncFileContents
 					{
 						Console.WriteLine($"Committing: {filePath}");
 						string repoPath = Repository.Discover(filePath);
-						var repo = new Repository(repoPath);
-						string relativeFilePath = filePath.Replace(repoPath.Replace(".git\\", "", StringComparison.Ordinal), "", StringComparison.Ordinal);
-						repo.Index.Add(relativeFilePath);
-						repo.Index.Write();
-						try
+						if (!string.IsNullOrEmpty(repoPath))
 						{
-							_ = repo.Commit($"Sync {relativeFilePath}", new Signature(nameof(SyncFileContents), nameof(SyncFileContents), DateTimeOffset.Now), new Signature(nameof(SyncFileContents), nameof(SyncFileContents), DateTimeOffset.Now));
-						}
-						catch (EmptyCommitException)
-						{
-							continue;
-						}
-						catch (UnmergedIndexEntriesException)
-						{
-							continue;
+							var repo = new Repository(repoPath);
+							string relativeFilePath = filePath.Replace(repoPath.Replace(".git\\", "", StringComparison.Ordinal), "", StringComparison.Ordinal);
+							repo.Index.Add(relativeFilePath);
+							repo.Index.Write();
+							try
+							{
+								_ = repo.Commit($"Sync {relativeFilePath}", new Signature(nameof(SyncFileContents), nameof(SyncFileContents), DateTimeOffset.Now), new Signature(nameof(SyncFileContents), nameof(SyncFileContents), DateTimeOffset.Now));
+							}
+							catch (EmptyCommitException)
+							{
+								continue;
+							}
+							catch (UnmergedIndexEntriesException)
+							{
+								continue;
+							}
 						}
 					}
 				}
@@ -305,12 +333,11 @@ internal static class SyncFileContents
 
 			var pushDirectories = new Collection<string>();
 
-			foreach (string dir in allDirectories)
+			foreach (string dir in commitDirectories)
 			{
 				string directoryPath = Path.Combine(path, dir);
-				string filePath = Path.Combine(directoryPath, filename);
-				string repoPath = Repository.Discover(filePath);
-				if (repoPath?.EndsWith(".git\\", StringComparison.Ordinal) ?? false) // don't try commit submodules
+				string repoPath = Repository.Discover(directoryPath);
+				if (!string.IsNullOrEmpty(repoPath) && (repoPath?.EndsWith(".git\\", StringComparison.Ordinal) ?? false)) // don't try commit submodules
 				{
 					var repo = new Repository(repoPath);
 
@@ -395,6 +422,7 @@ internal static class SyncFileContents
 			Console.WriteLine("Press any key...");
 			_ = Console.ReadKey();
 
+			filesToSync.Clear();
 			filename = string.Empty;
 			path = string.Empty;
 		}
