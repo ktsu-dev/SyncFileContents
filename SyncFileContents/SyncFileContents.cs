@@ -12,6 +12,8 @@ using System.IO;
 using System.Security.Cryptography;
 using System.Text;
 using CommandLine;
+using ktsu.Extensions;
+using ktsu.StrongPaths;
 using LibGit2Sharp;
 using PrettyPrompt;
 
@@ -144,8 +146,13 @@ internal static class SyncFileContents
 
 					foreach (string file in filename.Split(','))
 					{
-						string newFile = Path.GetFileName(file);
+						string newFile = Path.GetFileName(file.Trim());
 						_ = filesToSync.Add(newFile.Trim());
+					}
+
+					if (filename.Contains(','))
+					{
+						break;
 					}
 				}
 			}
@@ -171,7 +178,8 @@ internal static class SyncFileContents
 				Console.WriteLine($"In: {path}");
 				Console.WriteLine();
 
-				var fileEnumeration = Directory.EnumerateFiles(path, fileToSync, SearchOption.AllDirectories);
+				var fileEnumeration = Directory.EnumerateFiles(path, fileToSync, SearchOption.AllDirectories)
+					.Where(f => !IsRepoNested(f.As<AbsoluteFilePath>().DirectoryPath));
 
 				var results = new Dictionary<string, Collection<string>>();
 
@@ -287,7 +295,7 @@ internal static class SyncFileContents
 					{
 						string filePath = Path.Combine(directoryPath, fileToSync);
 						var fileStatus = repo.RetrieveStatus(filePath);
-						if (fileStatus != FileStatus.Unaltered)
+						if (fileStatus is FileStatus.ModifiedInWorkdir or FileStatus.NewInWorkdir)
 						{
 							commitFiles.Add(filePath);
 							Console.WriteLine($"{filePath} has outstanding changes");
@@ -332,15 +340,13 @@ internal static class SyncFileContents
 			}
 
 			var pushDirectories = new Collection<string>();
-
-			foreach (string dir in commitDirectories)
+			var commitRepos = commitDirectories.Select(f => Repository.Discover(Path.Combine(path, f))).Distinct();
+			foreach (string repoPath in commitRepos)
 			{
-				string directoryPath = Path.Combine(path, dir);
-				string repoPath = Repository.Discover(directoryPath);
 				if (!string.IsNullOrEmpty(repoPath) && (repoPath?.EndsWith(".git\\", StringComparison.Ordinal) ?? false)) // don't try commit submodules
 				{
 					var repo = new Repository(repoPath);
-
+					string repoRoot = repoPath.Replace(".git\\", "", StringComparison.Ordinal);
 					// check how far ahead we are
 					var localBranch = repo.Branches[repo.Head.FriendlyName];
 					int aheadBy = localBranch?.TrackingDetails.AheadBy ?? 0;
@@ -367,8 +373,8 @@ internal static class SyncFileContents
 
 					if (aheadBy > 0 && canPush)
 					{
-						pushDirectories.Add(dir);
-						Console.WriteLine($"{dir} can be pushed automatically");
+						pushDirectories.Add(repoRoot);
+						Console.WriteLine($"{repoRoot} can be pushed automatically");
 					}
 				}
 			}
@@ -438,5 +444,21 @@ internal static class SyncFileContents
 		}
 
 		return builder.ToString();
+	}
+
+	private static bool IsRepoNested(AbsoluteDirectoryPath path)
+	{
+		var checkDir = path;
+		do
+		{
+			if (checkDir.Contents.Any(f => f.As<AnyAbsolutePath>().IsFile && f.As<AbsoluteFilePath>().FileName == ".git"))
+			{
+				return true;
+			}
+			checkDir = checkDir.Parent;
+		}
+		while (Path.IsPathFullyQualified(checkDir));
+
+		return false;
 	}
 }
