@@ -7,7 +7,7 @@
   <ItemGroup>
     <PackageReference Include="CommandLineParser" Version="2.9.1" />
     <PackageReference Include="ktsu.AppDataStorage" Version="1.1.55" />
-    <PackageReference Include="ktsu.StrongPaths" Version="1.1.36" />
+    <PackageReference Include="ktsu.StrongPaths" Version="1.1.37" />
     <PackageReference Include="ktsu.StrongStrings" Version="1.2.15" />
     <PackageReference Include="LibGit2Sharp" Version="0.31.0" />
     <PackageReference Include="Microsoft.DotNet.ILCompiler" Version="9.0.0" />
