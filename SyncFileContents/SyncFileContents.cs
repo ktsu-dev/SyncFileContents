@@ -31,9 +31,10 @@ internal static class SyncFileContents
 			Console.WriteLine($"Git: {logMessage}");
 		}));
 
-		_ = await Parser.Default.ParseArguments<Arguments>(args).WithParsedAsync(Sync);
+		_ = await Parser.Default.ParseArguments<Arguments>(args).WithParsedAsync(Sync).ConfigureAwait(false);
 	}
 
+	[System.Diagnostics.CodeAnalysis.SuppressMessage("Reliability", "CA2007:Consider calling ConfigureAwait on the awaited task", Justification = "<Pending>")]
 	internal static async Task Sync(Arguments args)
 	{
 		HashSet<string> filesToSync = [];
@@ -240,7 +241,11 @@ internal static class SyncFileContents
 
 					if (!string.IsNullOrWhiteSpace(syncHash))
 					{
-						var destinationDirectories = results.Where(r => r.Key != syncHash).SelectMany(r => r.Value);
+						var destinationDirectories = results
+							.Where(r => r.Key != syncHash)
+							.SelectMany(r => r.Value)
+							.ToCollection();
+
 						if (results.TryGetValue(syncHash, out var sourceDirectories))
 						{
 							Debug.Assert(sourceDirectories.Count > 0);
@@ -290,7 +295,7 @@ internal static class SyncFileContents
 				string repoPath = Repository.Discover(directoryPath);
 				if (repoPath?.EndsWith(".git\\", StringComparison.Ordinal) ?? false) // don't try commit submodules
 				{
-					var repo = new Repository(repoPath);
+					using var repo = new Repository(repoPath);
 					foreach (string fileToSync in filesToSync)
 					{
 						string filePath = Path.Combine(directoryPath, fileToSync);
@@ -318,7 +323,7 @@ internal static class SyncFileContents
 						string repoPath = Repository.Discover(filePath);
 						if (!string.IsNullOrEmpty(repoPath))
 						{
-							var repo = new Repository(repoPath);
+							using var repo = new Repository(repoPath);
 							string relativeFilePath = filePath.Replace(repoPath.Replace(".git\\", "", StringComparison.Ordinal), "", StringComparison.Ordinal);
 							repo.Index.Add(relativeFilePath);
 							repo.Index.Write();
@@ -343,9 +348,9 @@ internal static class SyncFileContents
 			var commitRepos = commitDirectories.Select(f => Repository.Discover(Path.Combine(path, f))).Distinct();
 			foreach (string repoPath in commitRepos)
 			{
-				if (!string.IsNullOrEmpty(repoPath) && (repoPath?.EndsWith(".git\\", StringComparison.Ordinal) ?? false)) // don't try commit submodules
+				if (!string.IsNullOrEmpty(repoPath) && repoPath.EndsWith(".git\\", StringComparison.Ordinal)) // don't try commit submodules
 				{
-					var repo = new Repository(repoPath);
+					using var repo = new Repository(repoPath);
 					string repoRoot = repoPath.Replace(".git\\", "", StringComparison.Ordinal);
 					// check how far ahead we are
 					var localBranch = repo.Branches[repo.Head.FriendlyName];
@@ -411,7 +416,7 @@ internal static class SyncFileContents
 							},
 						};
 
-						var repo = new Repository(repoPath);
+						using var repo = new Repository(repoPath);
 						try
 						{
 							repo.Network.Push(repo.Head, pushOptions);
