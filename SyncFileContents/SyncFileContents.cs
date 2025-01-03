@@ -171,7 +171,7 @@ internal static class SyncFileContents
 			}
 
 			HashSet<string> commitDirectories = [];
-
+			HashSet<string> expandedFilesToSync = [];
 			foreach (string fileToSync in filesToSync)
 			{
 				Console.WriteLine();
@@ -180,108 +180,120 @@ internal static class SyncFileContents
 				Console.WriteLine();
 
 				var fileEnumeration = Directory.EnumerateFiles(path, fileToSync, SearchOption.AllDirectories)
-					.Where(f => !IsRepoNested(f.As<AbsoluteFilePath>().DirectoryPath));
+					.Where(f => !IsRepoNested(f.As<AbsoluteFilePath>().DirectoryPath))
+					.ToCollection();
 
-				var results = new Dictionary<string, Collection<string>>();
+				var uniqueFilenames = fileEnumeration.Select(f => Path.GetFileName(f)).Distinct();
+				Console.WriteLine($"Found matches: {string.Join(", ", uniqueFilenames)}");
 
-				using var sha256 = SHA256.Create();
+				expandedFilesToSync.UnionWith(uniqueFilenames);
 
-				foreach (string file in fileEnumeration)
+				foreach (string uniqueFilename in uniqueFilenames)
 				{
-					using var fileStream = new FileStream(file, FileMode.Open);
-					fileStream.Position = 0;
-					byte[] hash = await sha256.ComputeHashAsync(fileStream);
-					string hashStr = HashToString(hash);
-					if (!results.TryGetValue(hashStr, out var result))
+					var fileMatches = fileEnumeration.Where(f => Path.GetFileName(f) == uniqueFilename);
+
+					var results = new Dictionary<string, Collection<string>>();
+
+					using var sha256 = SHA256.Create();
+
+					foreach (string file in fileMatches)
 					{
-						result = [];
-						results.Add(hashStr, result);
-					}
-
-					result.Add(file.Replace(path, "").Replace(fileToSync, "").Trim(Path.DirectorySeparatorChar));
-				}
-
-				var allDirectories = results.SelectMany(r => r.Value);
-				commitDirectories.UnionWith(allDirectories);
-				if (results.Count > 1)
-				{
-					int padWidth = allDirectories.Max(d => d.Length) + 4;
-
-					results = results.OrderBy(r => r.Value.Count).ToDictionary(r => r.Key, r => r.Value);
-
-					foreach (var (hash, relativeDirectories) in results)
-					{
-						Console.WriteLine();
-						Console.WriteLine(hash);
-						foreach (string dir in relativeDirectories)
+						using var fileStream = new FileStream(file, FileMode.Open);
+						fileStream.Position = 0;
+						byte[] hash = await sha256.ComputeHashAsync(fileStream);
+						string hashStr = HashToString(hash);
+						if (!results.TryGetValue(hashStr, out var result))
 						{
-							string filePath = Path.Combine(path, dir, fileToSync);
-							var fileInfo = new FileInfo(filePath);
-							var created = fileInfo.CreationTime;
-							var modified = fileInfo.LastWriteTime;
-							Console.WriteLine($"{dir.PadLeft(padWidth)} {created,22} {modified,22}");
+							result = [];
+							results.Add(hashStr, result);
 						}
+
+						result.Add(file.Replace(path, "").Replace(uniqueFilename, "").Trim(Path.DirectorySeparatorChar));
 					}
 
-					Console.WriteLine();
-
-					string syncHash;
-
-					var firstResult = results.First();
-					if (results.Count == 2 && firstResult.Value.Count == 1)
+					var allDirectories = results.SelectMany(r => r.Value);
+					commitDirectories.UnionWith(allDirectories);
+					if (results.Count > 1)
 					{
-						Console.WriteLine($"Only one file was changed for {fileToSync}, assuming you want to propagate that one.");
-						syncHash = firstResult.Key;
-					}
-					else
-					{
-						Console.WriteLine("Enter a hash to sync to, or return to continue:");
-						syncHash = Console.ReadLine() ?? string.Empty;
-					}
+						int padWidth = allDirectories.Max(d => d.Length) + 4;
 
-					if (!string.IsNullOrWhiteSpace(syncHash))
-					{
-						var destinationDirectories = results
-							.Where(r => r.Key != syncHash)
-							.SelectMany(r => r.Value)
-							.ToCollection();
+						results = results.OrderBy(r => r.Value.Count).ToDictionary(r => r.Key, r => r.Value);
 
-						if (results.TryGetValue(syncHash, out var sourceDirectories))
+						foreach (var (hash, relativeDirectories) in results)
 						{
-							Debug.Assert(sourceDirectories.Count > 0);
-							string sourceDir = sourceDirectories[0];
-							string sourceFile = Path.Combine(path, sourceDir, fileToSync);
-
-							foreach (string dir in destinationDirectories)
-							{
-								string destinationFile = Path.Combine(path, dir, fileToSync);
-								Console.WriteLine($"Dry run: From {sourceDir} to {destinationFile}");
-							}
-
 							Console.WriteLine();
-							Console.WriteLine("Enter Y to sync.");
-
-							if (Console.ReadLine()?.ToUpperInvariant() == "Y")
+							Console.WriteLine($"{hash} {uniqueFilename}");
+							foreach (string dir in relativeDirectories)
 							{
-								Console.WriteLine();
-								foreach (string dir in destinationDirectories)
-								{
-									string destinationFile = Path.Combine(path, dir, fileToSync);
-									Console.WriteLine($"Copying: From {sourceDir} to {destinationFile}");
-									File.Copy(sourceFile, destinationFile, true);
-								}
+								string filePath = Path.Combine(path, dir, uniqueFilename);
+								var fileInfo = new FileInfo(filePath);
+								var created = fileInfo.CreationTime;
+								var modified = fileInfo.LastWriteTime;
+								Console.WriteLine($"{dir.PadLeft(padWidth)} {created,22} {modified,22}");
 							}
+						}
+
+						Console.WriteLine();
+
+						string syncHash;
+
+						var firstResult = results.First();
+						if (results.Count == 2 && firstResult.Value.Count == 1)
+						{
+							Console.WriteLine($"Only one file was changed for {uniqueFilename}, assuming you want to propagate that one.");
+							syncHash = firstResult.Key;
 						}
 						else
 						{
-							Console.WriteLine("Hash not found.");
+							Console.WriteLine("Enter a hash to sync to, or return to continue:");
+							syncHash = Console.ReadLine() ?? string.Empty;
+						}
+
+						if (!string.IsNullOrWhiteSpace(syncHash))
+						{
+							var destinationDirectories = results
+								.Where(r => r.Key != syncHash)
+								.SelectMany(r => r.Value)
+								.ToCollection();
+
+							if (results.TryGetValue(syncHash, out var sourceDirectories))
+							{
+								Debug.Assert(sourceDirectories.Count > 0);
+								string sourceDir = sourceDirectories[0];
+								string sourceFile = Path.Combine(path, sourceDir, uniqueFilename);
+
+								foreach (string dir in destinationDirectories)
+								{
+									string destinationFile = Path.Combine(path, dir, uniqueFilename);
+									Console.WriteLine($"Dry run: From {sourceDir} to {destinationFile}");
+								}
+
+								Console.WriteLine();
+								Console.WriteLine("Enter Y to sync.");
+
+								if (Console.ReadLine()?.ToUpperInvariant() == "Y")
+								{
+									Console.WriteLine();
+									foreach (string dir in destinationDirectories)
+									{
+										string destinationFile = Path.Combine(path, dir, uniqueFilename);
+										Console.WriteLine($"Copying: From {sourceDir} to {destinationFile}");
+										File.Copy(sourceFile, destinationFile, true);
+									}
+								}
+							}
+							else
+							{
+								Console.WriteLine("Hash not found.");
+							}
 						}
 					}
-				}
 
-				if (results.Count == 1)
-				{
-					Console.WriteLine($"No outstanding files to sync for: {fileToSync}.");
+
+					if (results.Count == 1)
+					{
+						Console.WriteLine($"No outstanding files to sync for: {uniqueFilename}.");
+					}
 				}
 			}
 
@@ -296,9 +308,9 @@ internal static class SyncFileContents
 				if (repoPath?.EndsWith(".git\\", StringComparison.Ordinal) ?? false) // don't try commit submodules
 				{
 					using var repo = new Repository(repoPath);
-					foreach (string fileToSync in filesToSync)
+					foreach (string uniqueFilename in expandedFilesToSync)
 					{
-						string filePath = Path.Combine(directoryPath, fileToSync);
+						string filePath = Path.Combine(directoryPath, uniqueFilename);
 						var fileStatus = repo.RetrieveStatus(filePath);
 						if (fileStatus is FileStatus.ModifiedInWorkdir or FileStatus.NewInWorkdir)
 						{
@@ -434,6 +446,7 @@ internal static class SyncFileContents
 			_ = Console.ReadKey();
 
 			filesToSync.Clear();
+			expandedFilesToSync.Clear();
 			filename = string.Empty;
 			path = string.Empty;
 		}
