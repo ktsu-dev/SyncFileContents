@@ -1,16 +1,10 @@
-## v1.0.4 (unknown)
-
-Changes since v1.0.4-pre.5:
-
-- Add automation scripts for metadata management and versioning ([@Matthew Edmondson](https://github.com/Matthew Edmondson))
-
 ## v1.0.1-pre.1 (patch)
 
 Changes since v1.0.0-alpha.34:
 
-- Improve SyncFileContents: reliability and readability ([@Matthew Edmondson](https://github.com/Matthew Edmondson))
-- renamed metadata files ([@Matthew Edmondson](https://github.com/Matthew Edmondson))
-- Update license ([@Matthew Edmondson](https://github.com/Matthew Edmondson))
+- Improve SyncFileContents: reliability and readability ([@matt-edmondson](https://github.com/matt-edmondson))
+- renamed metadata files ([@matt-edmondson](https://github.com/matt-edmondson))
+- Update license ([@matt-edmondson](https://github.com/matt-edmondson))
 
 ## v1.0.0-alpha.2 (major)
 
