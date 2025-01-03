@@ -1,9 +1,3 @@
-## v1.0.4 (unknown)
-
-Changes since v1.0.4-pre.6:
-
-- Added support for wildcards in filenames ([@matt-edmondson](https://github.com/matt-edmondson))
-
 ## v1.0.1-pre.1 (patch)
 
 Changes since v1.0.0-alpha.34:
