@@ -1,3 +1,9 @@
+## v1.0.4 (patch)
+
+Changes since v1.0.4-pre.10:
+
+- Update cron schedule in GitHub Actions workflow ([@matt-edmondson](https://github.com/matt-edmondson))
+
 ## v1.0.1-pre.1 (patch)
 
 Changes since v1.0.0-alpha.34:
