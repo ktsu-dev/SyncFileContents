@@ -10,7 +10,7 @@
     <PackageReference Include="ktsu.StrongPaths" Version="1.1.50" />
     <PackageReference Include="ktsu.StrongStrings" Version="1.2.26" />
     <PackageReference Include="LibGit2Sharp" Version="0.31.0" />
-    <PackageReference Include="Microsoft.DotNet.ILCompiler" Version="9.0.1" />
+    <PackageReference Include="Microsoft.DotNet.ILCompiler" Version="9.0.2" />
     <PackageReference Include="Microsoft.NET.ILLink.Tasks" Version="9.0.1" />
     <PackageReference Include="PrettyPrompt" Version="4.1.1" />
   </ItemGroup>
