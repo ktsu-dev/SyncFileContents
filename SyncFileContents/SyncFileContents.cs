@@ -1,5 +1,3 @@
-// Ignore Spelling: sha
-
 [assembly: CLSCompliant(true)]
 [assembly: System.Runtime.InteropServices.ComVisible(false)]
 
@@ -11,10 +9,14 @@ using System.Globalization;
 using System.IO;
 using System.Security.Cryptography;
 using System.Text;
+
 using CommandLine;
+
 using ktsu.Extensions;
 using ktsu.StrongPaths;
+
 using LibGit2Sharp;
+
 using PrettyPrompt;
 
 internal static class SyncFileContents
@@ -35,6 +37,8 @@ internal static class SyncFileContents
 	}
 
 	[System.Diagnostics.CodeAnalysis.SuppressMessage("Reliability", "CA2007:Consider calling ConfigureAwait on the awaited task", Justification = "<Pending>")]
+	[System.Diagnostics.CodeAnalysis.SuppressMessage("Maintainability", "CA1502: Avoid excessive complexity", Justification = "<Pending>")]
+	[System.Diagnostics.CodeAnalysis.SuppressMessage("Maintainability", "CA1506: Avoid excessive class coupling", Justification = "<Pending>")]
 	internal static async Task Sync(Arguments args)
 	{
 		HashSet<string> filesToSync = [];
@@ -289,7 +293,6 @@ internal static class SyncFileContents
 						}
 					}
 
-
 					if (results.Count == 1)
 					{
 						Console.WriteLine($"No outstanding files to sync for: {uniqueFilename}.");
@@ -385,6 +388,7 @@ internal static class SyncFileContents
 						{
 							break;
 						}
+
 						++commitIndex;
 					}
 
@@ -417,10 +421,7 @@ internal static class SyncFileContents
 								Username = Settings.Username,
 								Password = Settings.Token,
 							},
-							OnPushStatusError = (pushStatusErrors) =>
-							{
-								Console.WriteLine($"Error pushing: {pushStatusErrors.Message}");
-							},
+							OnPushStatusError = (pushStatusErrors) => Console.WriteLine($"Error pushing: {pushStatusErrors.Message}"),
 							OnPushTransferProgress = (current, total, bytes) =>
 							{
 								Console.WriteLine($"Progress: {current} / {total} ({bytes} bytes)");
@@ -473,6 +474,7 @@ internal static class SyncFileContents
 			{
 				return true;
 			}
+
 			checkDir = checkDir.Parent;
 		}
 		while (Path.IsPathFullyQualified(checkDir));
