@@ -1,3 +1,7 @@
+// Copyright (c) ktsu.dev
+// All rights reserved.
+// Licensed under the MIT license.
+
 [assembly: CLSCompliant(true)]
 [assembly: System.Runtime.InteropServices.ComVisible(false)]
 
@@ -29,7 +33,7 @@ internal static class SyncFileContents
 
 		GlobalSettings.LogConfiguration = new(LogLevel.Info, new((level, message) =>
 		{
-			string logMessage = $"[{level}] {message}";
+			var logMessage = $"[{level}] {message}";
 			Console.WriteLine($"Git: {logMessage}");
 		}));
 
@@ -42,8 +46,8 @@ internal static class SyncFileContents
 	internal static async Task Sync(Arguments args)
 	{
 		HashSet<string> filesToSync = [];
-		string filename = args.Filename;
-		string path = args.Path;
+		var filename = args.Filename;
+		var path = args.Path;
 
 		do
 		{
@@ -93,7 +97,7 @@ internal static class SyncFileContents
 				}
 			}
 
-			string applicationDataPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), nameof(SyncFileContents));
+			var applicationDataPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), nameof(SyncFileContents));
 			_ = Directory.CreateDirectory(applicationDataPath);
 			if (string.IsNullOrWhiteSpace(path))
 			{
@@ -149,9 +153,9 @@ internal static class SyncFileContents
 						break;
 					}
 
-					foreach (string file in filename.Split(','))
+					foreach (var file in filename.Split(','))
 					{
-						string newFile = Path.GetFileName(file.Trim());
+						var newFile = Path.GetFileName(file.Trim());
 						_ = filesToSync.Add(newFile.Trim());
 					}
 
@@ -176,7 +180,7 @@ internal static class SyncFileContents
 
 			HashSet<string> commitDirectories = [];
 			HashSet<string> expandedFilesToSync = [];
-			foreach (string fileToSync in filesToSync)
+			foreach (var fileToSync in filesToSync)
 			{
 				Console.WriteLine();
 				Console.WriteLine($"Scanning for: {fileToSync}");
@@ -192,7 +196,7 @@ internal static class SyncFileContents
 
 				expandedFilesToSync.UnionWith(uniqueFilenames);
 
-				foreach (string uniqueFilename in uniqueFilenames)
+				foreach (var uniqueFilename in uniqueFilenames)
 				{
 					var fileMatches = fileEnumeration.Where(f => Path.GetFileName(f) == uniqueFilename);
 
@@ -200,12 +204,12 @@ internal static class SyncFileContents
 
 					using var sha256 = SHA256.Create();
 
-					foreach (string file in fileMatches)
+					foreach (var file in fileMatches)
 					{
 						using var fileStream = new FileStream(file, FileMode.Open);
 						fileStream.Position = 0;
-						byte[] hash = await sha256.ComputeHashAsync(fileStream);
-						string hashStr = HashToString(hash);
+						var hash = await sha256.ComputeHashAsync(fileStream);
+						var hashStr = HashToString(hash);
 						if (!results.TryGetValue(hashStr, out var result))
 						{
 							result = [];
@@ -219,7 +223,7 @@ internal static class SyncFileContents
 					commitDirectories.UnionWith(allDirectories);
 					if (results.Count > 1)
 					{
-						int padWidth = allDirectories.Max(d => d.Length) + 4;
+						var padWidth = allDirectories.Max(d => d.Length) + 4;
 
 						results = results.OrderBy(r => r.Value.Count).ToDictionary(r => r.Key, r => r.Value);
 
@@ -227,9 +231,9 @@ internal static class SyncFileContents
 						{
 							Console.WriteLine();
 							Console.WriteLine($"{hash} {uniqueFilename}");
-							foreach (string dir in relativeDirectories)
+							foreach (var dir in relativeDirectories)
 							{
-								string filePath = Path.Combine(path, dir, uniqueFilename);
+								var filePath = Path.Combine(path, dir, uniqueFilename);
 								var fileInfo = new FileInfo(filePath);
 								var created = fileInfo.CreationTime;
 								var modified = fileInfo.LastWriteTime;
@@ -263,12 +267,12 @@ internal static class SyncFileContents
 							if (results.TryGetValue(syncHash, out var sourceDirectories))
 							{
 								Debug.Assert(sourceDirectories.Count > 0);
-								string sourceDir = sourceDirectories[0];
-								string sourceFile = Path.Combine(path, sourceDir, uniqueFilename);
+								var sourceDir = sourceDirectories[0];
+								var sourceFile = Path.Combine(path, sourceDir, uniqueFilename);
 
-								foreach (string dir in destinationDirectories)
+								foreach (var dir in destinationDirectories)
 								{
-									string destinationFile = Path.Combine(path, dir, uniqueFilename);
+									var destinationFile = Path.Combine(path, dir, uniqueFilename);
 									Console.WriteLine($"Dry run: From {sourceDir} to {destinationFile}");
 								}
 
@@ -278,9 +282,9 @@ internal static class SyncFileContents
 								if (Console.ReadLine()?.ToUpperInvariant() == "Y")
 								{
 									Console.WriteLine();
-									foreach (string dir in destinationDirectories)
+									foreach (var dir in destinationDirectories)
 									{
-										string destinationFile = Path.Combine(path, dir, uniqueFilename);
+										var destinationFile = Path.Combine(path, dir, uniqueFilename);
 										Console.WriteLine($"Copying: From {sourceDir} to {destinationFile}");
 										File.Copy(sourceFile, destinationFile, true);
 									}
@@ -304,16 +308,16 @@ internal static class SyncFileContents
 
 			var commitFiles = new Collection<string>();
 
-			foreach (string? dir in commitDirectories)
+			foreach (var dir in commitDirectories)
 			{
-				string directoryPath = Path.Combine(path, dir);
-				string repoPath = Repository.Discover(directoryPath);
+				var directoryPath = Path.Combine(path, dir);
+				var repoPath = Repository.Discover(directoryPath);
 				if (repoPath?.EndsWith(".git\\", StringComparison.Ordinal) ?? false) // don't try commit submodules
 				{
 					using var repo = new Repository(repoPath);
-					foreach (string uniqueFilename in expandedFilesToSync)
+					foreach (var uniqueFilename in expandedFilesToSync)
 					{
-						string filePath = Path.Combine(directoryPath, uniqueFilename);
+						var filePath = Path.Combine(directoryPath, uniqueFilename);
 						var fileStatus = repo.RetrieveStatus(filePath);
 						if (fileStatus is FileStatus.ModifiedInWorkdir or FileStatus.NewInWorkdir)
 						{
@@ -332,14 +336,14 @@ internal static class SyncFileContents
 				if (Console.ReadLine()?.ToUpperInvariant() == "Y")
 				{
 					Console.WriteLine();
-					foreach (string filePath in commitFiles)
+					foreach (var filePath in commitFiles)
 					{
 						Console.WriteLine($"Committing: {filePath}");
-						string repoPath = Repository.Discover(filePath);
+						var repoPath = Repository.Discover(filePath);
 						if (!string.IsNullOrEmpty(repoPath))
 						{
 							using var repo = new Repository(repoPath);
-							string relativeFilePath = filePath.Replace(repoPath.Replace(".git\\", "", StringComparison.Ordinal), "", StringComparison.Ordinal);
+							var relativeFilePath = filePath.Replace(repoPath.Replace(".git\\", "", StringComparison.Ordinal), "", StringComparison.Ordinal);
 							repo.Index.Add(relativeFilePath);
 							repo.Index.Write();
 							try
@@ -361,19 +365,19 @@ internal static class SyncFileContents
 
 			var pushDirectories = new Collection<string>();
 			var commitRepos = commitDirectories.Select(f => Repository.Discover(Path.Combine(path, f))).Distinct();
-			foreach (string repoPath in commitRepos)
+			foreach (var repoPath in commitRepos)
 			{
 				if (!string.IsNullOrEmpty(repoPath) && repoPath.EndsWith(".git\\", StringComparison.Ordinal)) // don't try commit submodules
 				{
 					using var repo = new Repository(repoPath);
-					string repoRoot = repoPath.Replace(".git\\", "", StringComparison.Ordinal);
+					var repoRoot = repoPath.Replace(".git\\", "", StringComparison.Ordinal);
 					// check how far ahead we are
 					var localBranch = repo.Branches[repo.Head.FriendlyName];
-					int aheadBy = localBranch?.TrackingDetails.AheadBy ?? 0;
+					var aheadBy = localBranch?.TrackingDetails.AheadBy ?? 0;
 
 					// check if all outstanding commits were made by this tool
-					int commitIndex = 0;
-					bool canPush = true;
+					var commitIndex = 0;
+					var canPush = true;
 					foreach (var commit in repo.Head.Commits)
 					{
 						if (commitIndex < aheadBy)
@@ -408,11 +412,11 @@ internal static class SyncFileContents
 				if (Console.ReadLine()?.ToUpperInvariant() == "Y")
 				{
 					Console.WriteLine();
-					foreach (string dir in pushDirectories)
+					foreach (var dir in pushDirectories)
 					{
 						Console.WriteLine($"Pushing: {dir}");
-						string directoryPath = Path.Combine(path, dir);
-						string repoPath = Repository.Discover(directoryPath);
+						var directoryPath = Path.Combine(path, dir);
+						var repoPath = Repository.Discover(directoryPath);
 
 						var pushOptions = new PushOptions
 						{
@@ -457,7 +461,7 @@ internal static class SyncFileContents
 	internal static string HashToString(byte[] array)
 	{
 		var builder = new StringBuilder();
-		for (int i = 0; i < array.Length; i++)
+		for (var i = 0; i < array.Length; i++)
 		{
 			_ = builder.Append(array[i].ToString("X2", CultureInfo.InvariantCulture));
 		}
