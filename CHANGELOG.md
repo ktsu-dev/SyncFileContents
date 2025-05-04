@@ -1,3 +1,9 @@
+## v1.2.2 (patch)
+
+Changes since v1.2.1:
+
+- Update project SDK to ktsu.Sdk.App/1.8.0 and remove obsolete package references ([@matt-edmondson](https://github.com/matt-edmondson))
+
 ## v1.2.1 (patch)
 
 Changes since v1.2.0:
