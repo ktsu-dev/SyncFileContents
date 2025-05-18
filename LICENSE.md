@@ -1,6 +1,6 @@
 MIT License
 
-https://github.com/ktsu-dev/ktsu-dev/SyncFileContents
+https://github.com/ktsu-dev/SyncFileContents
 
 Copyright (c) 2023-2025 ktsu-dev
 
