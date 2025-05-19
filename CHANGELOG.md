@@ -1,6 +1,6 @@
-## v1.2.3-pre.16 (prerelease)
+## v1.2.3-pre.17 (prerelease)
 
-Changes since v1.2.3-pre.15:
+Changes since v1.2.3-pre.16:
 
 - Refactor SyncFileContents to improve file handling and repository checks ([@matt-edmondson](https://github.com/matt-edmondson))
 - Improve SyncFileContents: reliability and readability ([@matt-edmondson](https://github.com/matt-edmondson))
