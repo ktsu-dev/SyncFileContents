@@ -418,13 +418,15 @@ internal static class SyncFileContents
 						var directoryPath = Path.Combine(path, dir);
 						var repoPath = Repository.Discover(directoryPath);
 
+						var credentials = new UsernamePasswordCredentials
+						{
+							Username = Settings.Username,
+							Password = Settings.Token,
+						};
+
 						var pushOptions = new PushOptions
 						{
-							CredentialsProvider = (url, user, credentials) => new UsernamePasswordCredentials
-							{
-								Username = Settings.Username,
-								Password = Settings.Token,
-							},
+							CredentialsProvider = (url, user, creds) => credentials,
 							OnPushStatusError = (pushStatusErrors) => Console.WriteLine($"Error pushing: {pushStatusErrors.Message}"),
 							OnPushTransferProgress = (current, total, bytes) =>
 							{
@@ -436,6 +438,60 @@ internal static class SyncFileContents
 						using var repo = new Repository(repoPath);
 						try
 						{
+							// Try to pull updates first before pushing
+							Console.WriteLine("Checking for remote changes...");
+							var remote = repo.Network.Remotes["origin"];
+							var refSpecs = remote.FetchRefSpecs.Select(x => x.Specification);
+
+							var fetchOptions = new FetchOptions
+							{
+								CredentialsProvider = (url, user, creds) => credentials,
+							};
+
+							try
+							{
+								// Fetch changes
+								Commands.Fetch(repo, remote.Name, refSpecs, fetchOptions, "Fetched latest changes");
+
+								// Get the tracking branch
+								var trackingBranch = repo.Head.TrackedBranch;
+								if (trackingBranch != null)
+								{
+									// Check if we need to merge
+									var remoteBranchTip = trackingBranch.Tip;
+									var mergeResult = repo.Merge(trackingBranch, new Signature(nameof(SyncFileContents), nameof(SyncFileContents), DateTimeOffset.Now));
+
+									if (mergeResult.Status == MergeStatus.UpToDate)
+									{
+										Console.WriteLine("Local branch is up to date with remote.");
+									}
+									else if (mergeResult.Status == MergeStatus.FastForward)
+									{
+										Console.WriteLine("Fast-forwarded local branch to remote changes.");
+									}
+									else if (mergeResult.Status == MergeStatus.NonFastForward)
+									{
+										Console.WriteLine("Merged remote changes with local branch (non-fast-forward).");
+									}
+									else if (mergeResult.Status == MergeStatus.Conflicts)
+									{
+										Console.WriteLine("Cannot automatically merge due to conflicts. Please resolve conflicts manually.");
+										continue; // Skip the push if there are conflicts
+									}
+								}
+							}
+							catch (LibGit2SharpException ex)
+							{
+								Console.WriteLine($"Error during pull: {ex.Message}");
+								if (ex.InnerException != null)
+								{
+									Console.WriteLine($"Inner error: {ex.InnerException.Message}");
+								}
+
+								Console.WriteLine("Continuing with push...");
+							}
+
+							// Now push our changes
 							repo.Network.Push(repo.Head, pushOptions);
 						}
 						catch (LibGit2SharpException e)
