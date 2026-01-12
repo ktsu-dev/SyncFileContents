@@ -1,3 +1,6 @@
+## v1.2.4
+
+No significant changes detected since v1.2.4.
 ## v1.2.4 (patch)
 
 Changes since v1.2.3:
@@ -16,7 +19,7 @@ Changes since v1.2.4-pre.1:
 - Update ktsu.StrongPaths to 1.3.2 ([@dependabot[bot]](https://github.com/dependabot[bot]))
 ## v1.2.4-pre.1 (prerelease)
 
-Changes since v1.2.3:
+Incremental prerelease update.
 ## v1.2.3 (patch)
 
 Changes since v1.2.2:
