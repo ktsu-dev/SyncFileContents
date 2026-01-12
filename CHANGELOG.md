@@ -3,6 +3,7 @@
 Changes since v1.2.3:
 
 - Update .editorconfig, .gitignore, and .runsettings for improved settings and coverage output ([@matt-edmondson](https://github.com/matt-edmondson))
+- Refactor variable declarations for consistency and clarity ([@matt-edmondson](https://github.com/matt-edmondson))
 ## v1.2.4-pre.3 (prerelease)
 
 Changes since v1.2.4-pre.2:
