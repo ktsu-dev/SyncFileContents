@@ -7,6 +7,7 @@
 
 namespace ktsu.SyncFileContents;
 
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Globalization;
@@ -33,7 +34,7 @@ internal static class SyncFileContents
 
 		GlobalSettings.LogConfiguration = new(LogLevel.Info, new((level, message) =>
 		{
-			var logMessage = $"[{level}] {message}";
+			string logMessage = $"[{level}] {message}";
 			Console.WriteLine($"Git: {logMessage}");
 		}));
 
@@ -46,19 +47,19 @@ internal static class SyncFileContents
 	internal static async Task Sync(Arguments args)
 	{
 		HashSet<string> filesToSync = [];
-		var filename = args.Filename;
-		var path = args.Path;
+		string filename = args.Filename;
+		string path = args.Path;
 
 		do
 		{
 			if (string.IsNullOrEmpty(Settings.Username))
 			{
 				Console.WriteLine("Enter your git username:");
-				await using var prompt = new Prompt();
+				await using Prompt prompt = new();
 
 				while (true)
 				{
-					var response = await prompt.ReadLineAsync().ConfigureAwait(false);
+					PromptResult response = await prompt.ReadLineAsync().ConfigureAwait(false);
 					if (response.IsSuccess)
 					{
 						Settings.Username = response.Text;
@@ -77,11 +78,11 @@ internal static class SyncFileContents
 			if (string.IsNullOrEmpty(Settings.Token))
 			{
 				Console.WriteLine("Enter your git token:");
-				await using var prompt = new Prompt();
+				await using Prompt prompt = new();
 
 				while (true)
 				{
-					var response = await prompt.ReadLineAsync().ConfigureAwait(false);
+					PromptResult response = await prompt.ReadLineAsync().ConfigureAwait(false);
 					if (response.IsSuccess)
 					{
 						Settings.Token = response.Text;
@@ -97,16 +98,16 @@ internal static class SyncFileContents
 				}
 			}
 
-			var applicationDataPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), nameof(SyncFileContents));
+			string applicationDataPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), nameof(SyncFileContents));
 			_ = Directory.CreateDirectory(applicationDataPath);
 			if (string.IsNullOrWhiteSpace(path))
 			{
 				Console.WriteLine($"Path:");
-				await using var prompt = new Prompt(persistentHistoryFilepath: $"{applicationDataPath}/history-path");
+				await using Prompt prompt = new(persistentHistoryFilepath: $"{applicationDataPath}/history-path");
 
 				while (true)
 				{
-					var response = await prompt.ReadLineAsync().ConfigureAwait(false);
+					PromptResult response = await prompt.ReadLineAsync().ConfigureAwait(false);
 					if (response.IsSuccess)
 					{
 						path = response.Text;
@@ -130,11 +131,11 @@ internal static class SyncFileContents
 				while (true)
 				{
 					Console.WriteLine($"Add Filename(s):");
-					await using var prompt = new Prompt(persistentHistoryFilepath: $"{applicationDataPath}/history-filename");
+					await using Prompt prompt = new(persistentHistoryFilepath: $"{applicationDataPath}/history-filename");
 
 					while (true)
 					{
-						var response = await prompt.ReadLineAsync().ConfigureAwait(false);
+						PromptResult response = await prompt.ReadLineAsync().ConfigureAwait(false);
 						if (response.IsSuccess)
 						{
 							filename = response.Text;
@@ -153,9 +154,9 @@ internal static class SyncFileContents
 						break;
 					}
 
-					foreach (var file in filename.Split(','))
+					foreach (string file in filename.Split(','))
 					{
-						var newFile = Path.GetFileName(file.Trim());
+						string newFile = Path.GetFileName(file.Trim());
 						_ = filesToSync.Add(newFile.Trim());
 					}
 
@@ -180,37 +181,37 @@ internal static class SyncFileContents
 
 			HashSet<string> commitDirectories = [];
 			HashSet<string> expandedFilesToSync = [];
-			foreach (var fileToSync in filesToSync)
+			foreach (string fileToSync in filesToSync)
 			{
 				Console.WriteLine();
 				Console.WriteLine($"Scanning for: {fileToSync}");
 				Console.WriteLine($"In: {path}");
 				Console.WriteLine();
 
-				var fileEnumeration = Directory.EnumerateFiles(path, fileToSync, SearchOption.AllDirectories)
+				Collection<string> fileEnumeration = Directory.EnumerateFiles(path, fileToSync, SearchOption.AllDirectories)
 					.Where(f => !IsRepoNested(f.As<AbsoluteFilePath>().DirectoryPath))
 					.ToCollection();
 
-				var uniqueFilenames = fileEnumeration.Select(f => Path.GetFileName(f)).Distinct();
+				IEnumerable<string> uniqueFilenames = fileEnumeration.Select(f => Path.GetFileName(f)).Distinct();
 				Console.WriteLine($"Found matches: {string.Join(", ", uniqueFilenames)}");
 
 				expandedFilesToSync.UnionWith(uniqueFilenames);
 
-				foreach (var uniqueFilename in uniqueFilenames)
+				foreach (string uniqueFilename in uniqueFilenames)
 				{
-					var fileMatches = fileEnumeration.Where(f => Path.GetFileName(f) == uniqueFilename);
+					IEnumerable<string> fileMatches = fileEnumeration.Where(f => Path.GetFileName(f) == uniqueFilename);
 
-					var results = new Dictionary<string, Collection<string>>();
+					Dictionary<string, Collection<string>> results = [];
 
-					using var sha256 = SHA256.Create();
+					using SHA256 sha256 = SHA256.Create();
 
-					foreach (var file in fileMatches)
+					foreach (string file in fileMatches)
 					{
-						using var fileStream = new FileStream(file, FileMode.Open);
+						using FileStream fileStream = new(file, FileMode.Open);
 						fileStream.Position = 0;
-						var hash = await sha256.ComputeHashAsync(fileStream);
-						var hashStr = HashToString(hash);
-						if (!results.TryGetValue(hashStr, out var result))
+						byte[] hash = await sha256.ComputeHashAsync(fileStream);
+						string hashStr = HashToString(hash);
+						if (!results.TryGetValue(hashStr, out Collection<string>? result))
 						{
 							result = [];
 							results.Add(hashStr, result);
@@ -219,24 +220,24 @@ internal static class SyncFileContents
 						result.Add(file.Replace(path, "").Replace(uniqueFilename, "").Trim(Path.DirectorySeparatorChar));
 					}
 
-					var allDirectories = results.SelectMany(r => r.Value);
+					IEnumerable<string> allDirectories = results.SelectMany(r => r.Value);
 					commitDirectories.UnionWith(allDirectories);
 					if (results.Count > 1)
 					{
-						var padWidth = allDirectories.Max(d => d.Length) + 4;
+						int padWidth = allDirectories.Max(d => d.Length) + 4;
 
 						results = results.OrderBy(r => r.Value.Count).ToDictionary(r => r.Key, r => r.Value);
 
-						foreach (var (hash, relativeDirectories) in results)
+						foreach ((string? hash, Collection<string>? relativeDirectories) in results)
 						{
 							Console.WriteLine();
 							Console.WriteLine($"{hash} {uniqueFilename}");
-							foreach (var dir in relativeDirectories)
+							foreach (string dir in relativeDirectories)
 							{
-								var filePath = Path.Combine(path, dir, uniqueFilename);
-								var fileInfo = new FileInfo(filePath);
-								var created = fileInfo.CreationTime;
-								var modified = fileInfo.LastWriteTime;
+								string filePath = Path.Combine(path, dir, uniqueFilename);
+								FileInfo fileInfo = new(filePath);
+								DateTime created = fileInfo.CreationTime;
+								DateTime modified = fileInfo.LastWriteTime;
 								Console.WriteLine($"{dir.PadLeft(padWidth)} {created,22} {modified,22}");
 							}
 						}
@@ -245,7 +246,7 @@ internal static class SyncFileContents
 
 						string syncHash;
 
-						var firstResult = results.First();
+						KeyValuePair<string, Collection<string>> firstResult = results.First();
 						if (results.Count == 2 && firstResult.Value.Count == 1)
 						{
 							Console.WriteLine($"Only one file was changed for {uniqueFilename}, assuming you want to propagate that one.");
@@ -259,20 +260,20 @@ internal static class SyncFileContents
 
 						if (!string.IsNullOrWhiteSpace(syncHash))
 						{
-							var destinationDirectories = results
+							Collection<string> destinationDirectories = results
 								.Where(r => r.Key != syncHash)
 								.SelectMany(r => r.Value)
 								.ToCollection();
 
-							if (results.TryGetValue(syncHash, out var sourceDirectories))
+							if (results.TryGetValue(syncHash, out Collection<string>? sourceDirectories))
 							{
 								Debug.Assert(sourceDirectories.Count > 0);
-								var sourceDir = sourceDirectories[0];
-								var sourceFile = Path.Combine(path, sourceDir, uniqueFilename);
+								string sourceDir = sourceDirectories[0];
+								string sourceFile = Path.Combine(path, sourceDir, uniqueFilename);
 
-								foreach (var dir in destinationDirectories)
+								foreach (string? dir in destinationDirectories)
 								{
-									var destinationFile = Path.Combine(path, dir, uniqueFilename);
+									string destinationFile = Path.Combine(path, dir, uniqueFilename);
 									Console.WriteLine($"Dry run: From {sourceDir} to {destinationFile}");
 								}
 
@@ -282,9 +283,9 @@ internal static class SyncFileContents
 								if (Console.ReadLine()?.ToUpperInvariant() == "Y")
 								{
 									Console.WriteLine();
-									foreach (var dir in destinationDirectories)
+									foreach (string? dir in destinationDirectories)
 									{
-										var destinationFile = Path.Combine(path, dir, uniqueFilename);
+										string destinationFile = Path.Combine(path, dir, uniqueFilename);
 										Console.WriteLine($"Copying: From {sourceDir} to {destinationFile}");
 										File.Copy(sourceFile, destinationFile, true);
 									}
@@ -306,19 +307,19 @@ internal static class SyncFileContents
 
 			Console.WriteLine();
 
-			var commitFiles = new Collection<string>();
+			Collection<string> commitFiles = [];
 
-			foreach (var dir in commitDirectories)
+			foreach (string dir in commitDirectories)
 			{
-				var directoryPath = Path.Combine(path, dir);
-				var repoPath = Repository.Discover(directoryPath);
+				string directoryPath = Path.Combine(path, dir);
+				string repoPath = Repository.Discover(directoryPath);
 				if (repoPath?.EndsWith(".git\\", StringComparison.Ordinal) ?? false) // don't try commit submodules
 				{
-					using var repo = new Repository(repoPath);
-					foreach (var uniqueFilename in expandedFilesToSync)
+					using Repository repo = new(repoPath);
+					foreach (string uniqueFilename in expandedFilesToSync)
 					{
-						var filePath = Path.Combine(directoryPath, uniqueFilename);
-						var fileStatus = repo.RetrieveStatus(filePath);
+						string filePath = Path.Combine(directoryPath, uniqueFilename);
+						FileStatus fileStatus = repo.RetrieveStatus(filePath);
 						if (fileStatus is FileStatus.ModifiedInWorkdir or FileStatus.NewInWorkdir)
 						{
 							commitFiles.Add(filePath);
@@ -336,14 +337,14 @@ internal static class SyncFileContents
 				if (Console.ReadLine()?.ToUpperInvariant() == "Y")
 				{
 					Console.WriteLine();
-					foreach (var filePath in commitFiles)
+					foreach (string filePath in commitFiles)
 					{
 						Console.WriteLine($"Committing: {filePath}");
-						var repoPath = Repository.Discover(filePath);
+						string repoPath = Repository.Discover(filePath);
 						if (!string.IsNullOrEmpty(repoPath))
 						{
-							using var repo = new Repository(repoPath);
-							var relativeFilePath = filePath.Replace(repoPath.Replace(".git\\", "", StringComparison.Ordinal), "", StringComparison.Ordinal);
+							using Repository repo = new(repoPath);
+							string relativeFilePath = filePath.Replace(repoPath.Replace(".git\\", "", StringComparison.Ordinal), "", StringComparison.Ordinal);
 							repo.Index.Add(relativeFilePath);
 							repo.Index.Write();
 							try
@@ -363,22 +364,22 @@ internal static class SyncFileContents
 				}
 			}
 
-			var pushDirectories = new Collection<string>();
-			var commitRepos = commitDirectories.Select(f => Repository.Discover(Path.Combine(path, f))).Distinct();
-			foreach (var repoPath in commitRepos)
+			Collection<string> pushDirectories = [];
+			IEnumerable<string> commitRepos = commitDirectories.Select(f => Repository.Discover(Path.Combine(path, f))).Distinct();
+			foreach (string repoPath in commitRepos)
 			{
 				if (!string.IsNullOrEmpty(repoPath) && repoPath.EndsWith(".git\\", StringComparison.Ordinal)) // don't try commit submodules
 				{
-					using var repo = new Repository(repoPath);
-					var repoRoot = repoPath.Replace(".git\\", "", StringComparison.Ordinal);
+					using Repository repo = new(repoPath);
+					string repoRoot = repoPath.Replace(".git\\", "", StringComparison.Ordinal);
 					// check how far ahead we are
-					var localBranch = repo.Branches[repo.Head.FriendlyName];
-					var aheadBy = localBranch?.TrackingDetails.AheadBy ?? 0;
+					Branch localBranch = repo.Branches[repo.Head.FriendlyName];
+					int aheadBy = localBranch?.TrackingDetails.AheadBy ?? 0;
 
 					// check if all outstanding commits were made by this tool
-					var commitIndex = 0;
-					var canPush = true;
-					foreach (var commit in repo.Head.Commits)
+					int commitIndex = 0;
+					bool canPush = true;
+					foreach (Commit? commit in repo.Head.Commits)
 					{
 						if (commitIndex < aheadBy)
 						{
@@ -412,19 +413,19 @@ internal static class SyncFileContents
 				if (Console.ReadLine()?.ToUpperInvariant() == "Y")
 				{
 					Console.WriteLine();
-					foreach (var dir in pushDirectories)
+					foreach (string dir in pushDirectories)
 					{
 						Console.WriteLine($"Pushing: {dir}");
-						var directoryPath = Path.Combine(path, dir);
-						var repoPath = Repository.Discover(directoryPath);
+						string directoryPath = Path.Combine(path, dir);
+						string repoPath = Repository.Discover(directoryPath);
 
-						var credentials = new UsernamePasswordCredentials
+						UsernamePasswordCredentials credentials = new()
 						{
 							Username = Settings.Username,
 							Password = Settings.Token,
 						};
 
-						var pushOptions = new PushOptions
+						PushOptions pushOptions = new()
 						{
 							CredentialsProvider = (url, user, creds) => credentials,
 							OnPushStatusError = (pushStatusErrors) => Console.WriteLine($"Error pushing: {pushStatusErrors.Message}"),
@@ -435,15 +436,15 @@ internal static class SyncFileContents
 							},
 						};
 
-						using var repo = new Repository(repoPath);
+						using Repository repo = new(repoPath);
 						try
 						{
 							// Try to pull updates first before pushing
 							Console.WriteLine("Checking for remote changes...");
-							var remote = repo.Network.Remotes["origin"];
-							var refSpecs = remote.FetchRefSpecs.Select(x => x.Specification);
+							Remote remote = repo.Network.Remotes["origin"];
+							IEnumerable<string> refSpecs = remote.FetchRefSpecs.Select(x => x.Specification);
 
-							var fetchOptions = new FetchOptions
+							FetchOptions fetchOptions = new()
 							{
 								CredentialsProvider = (url, user, creds) => credentials,
 							};
@@ -454,12 +455,12 @@ internal static class SyncFileContents
 								Commands.Fetch(repo, remote.Name, refSpecs, fetchOptions, "Fetched latest changes");
 
 								// Get the tracking branch
-								var trackingBranch = repo.Head.TrackedBranch;
+								Branch trackingBranch = repo.Head.TrackedBranch;
 								if (trackingBranch != null)
 								{
 									// Check if we need to merge
-									var remoteBranchTip = trackingBranch.Tip;
-									var mergeResult = repo.Merge(trackingBranch, new Signature(nameof(SyncFileContents), nameof(SyncFileContents), DateTimeOffset.Now));
+									Commit remoteBranchTip = trackingBranch.Tip;
+									MergeResult mergeResult = repo.Merge(trackingBranch, new Signature(nameof(SyncFileContents), nameof(SyncFileContents), DateTimeOffset.Now));
 
 									if (mergeResult.Status == MergeStatus.UpToDate)
 									{
@@ -516,8 +517,8 @@ internal static class SyncFileContents
 
 	internal static string HashToString(byte[] array)
 	{
-		var builder = new StringBuilder();
-		for (var i = 0; i < array.Length; i++)
+		StringBuilder builder = new();
+		for (int i = 0; i < array.Length; i++)
 		{
 			_ = builder.Append(array[i].ToString("X2", CultureInfo.InvariantCulture));
 		}
@@ -527,7 +528,7 @@ internal static class SyncFileContents
 
 	private static bool IsRepoNested(AbsoluteDirectoryPath path)
 	{
-		var checkDir = path;
+		AbsoluteDirectoryPath checkDir = path;
 		do
 		{
 			if (checkDir.Contents.Any(f => f.As<AnyAbsolutePath>().IsFile && f.As<AbsoluteFilePath>().FileName == ".git"))
