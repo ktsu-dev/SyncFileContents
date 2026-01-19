@@ -1,7 +1,6 @@
-## v1.2.5 (patch)
+## v1.2.6 (patch)
 
-Changes since v1.2.4:
+Changes since v1.2.5:
 
-- Update package references and refactor path handling for consistency ([@matt-edmondson](https://github.com/matt-edmondson))
-- Add CLAUDE.md for project guidance and build commands ([@matt-edmondson](https://github.com/matt-edmondson))
-- Refactor git directory check to use Path.Combine while semantic paths are a little broken ([@matt-edmondson](https://github.com/matt-edmondson))
+- Update README.md for clarity and accuracy, including GitHub status link and enhanced usage instructions ([@matt-edmondson](https://github.com/matt-edmondson))
+- Enhance IsRepoNested method to detect multiple .git directories, indicating nested repositories ([@matt-edmondson](https://github.com/matt-edmondson))
