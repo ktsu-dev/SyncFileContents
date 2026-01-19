@@ -1,6 +1,5 @@
-## v1.2.6 (patch)
+## v1.2.7 (patch)
 
-Changes since v1.2.5:
+Changes since v1.2.6:
 
-- Update README.md for clarity and accuracy, including GitHub status link and enhanced usage instructions ([@matt-edmondson](https://github.com/matt-edmondson))
-- Enhance IsRepoNested method to detect multiple .git directories, indicating nested repositories ([@matt-edmondson](https://github.com/matt-edmondson))
+- Update .NET version and modify coverage reporting format for SonarQube integration ([@matt-edmondson](https://github.com/matt-edmondson))
