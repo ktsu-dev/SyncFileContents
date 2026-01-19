@@ -529,12 +529,20 @@ internal static class SyncFileContents
 	private static bool IsRepoNested(AbsoluteDirectoryPath path)
 	{
 		AbsoluteDirectoryPath checkDir = path;
+		bool foundFirstRepo = false;
+
 		while (!checkDir.IsRoot)
 		{
 			string gitDirPath = Path.Combine(checkDir.ToString(), ".git");
 			if (Directory.Exists(gitDirPath))
 			{
-				return true;
+				if (foundFirstRepo)
+				{
+					// Found a second .git directory higher up - this repo is nested
+					return true;
+				}
+
+				foundFirstRepo = true;
 			}
 
 			checkDir = checkDir.Parent;
