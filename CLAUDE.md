@@ -32,7 +32,7 @@ SyncFileContents is a .NET 9 console application that synchronizes files with th
 - `LibGit2Sharp` - Git operations (commit, push, fetch, merge)
 - `CommandLineParser` - CLI argument parsing
 - `PrettyPrompt` - Interactive console prompts with history
-- `ktsu.StrongPaths` - Strongly-typed path handling
+- `ktsu.Semantics.Paths` - Strongly-typed path handling
 - `ktsu.AppDataStorage` - Application settings persistence
 
 ## Code Quality

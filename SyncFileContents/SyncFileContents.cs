@@ -18,7 +18,7 @@ using System.Text;
 using CommandLine;
 
 using ktsu.Extensions;
-using ktsu.StrongPaths;
+using ktsu.Semantics.Paths;
 
 using LibGit2Sharp;
 
@@ -189,7 +189,7 @@ internal static class SyncFileContents
 				Console.WriteLine();
 
 				Collection<string> fileEnumeration = Directory.EnumerateFiles(path, fileToSync, SearchOption.AllDirectories)
-					.Where(f => !IsRepoNested(f.As<AbsoluteFilePath>().DirectoryPath))
+					.Where(f => !IsRepoNested(AbsoluteFilePath.Create<AbsoluteFilePath>(f).AbsoluteDirectoryPath))
 					.ToCollection();
 
 				IEnumerable<string> uniqueFilenames = fileEnumeration.Select(f => Path.GetFileName(f)).Distinct();
@@ -529,16 +529,16 @@ internal static class SyncFileContents
 	private static bool IsRepoNested(AbsoluteDirectoryPath path)
 	{
 		AbsoluteDirectoryPath checkDir = path;
-		do
+		while (!checkDir.IsRoot)
 		{
-			if (checkDir.Contents.Any(f => f.As<AnyAbsolutePath>().IsFile && f.As<AbsoluteFilePath>().FileName == ".git"))
+			AbsoluteFilePath gitFilePath = checkDir / FileName.Create<FileName>(".git");
+			if (gitFilePath.IsFile)
 			{
 				return true;
 			}
 
 			checkDir = checkDir.Parent;
 		}
-		while (Path.IsPathFullyQualified(checkDir));
 
 		return false;
 	}
