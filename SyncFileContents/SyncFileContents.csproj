@@ -3,7 +3,7 @@
 
   <ItemGroup>
     <PackageReference Include="CommandLineParser" Version="2.9.1" />
-    <PackageReference Include="ktsu.AppDataStorage" Version="1.15.11" />
+    <PackageReference Include="ktsu.AppDataStorage" Version="1.15.12" />
     <PackageReference Include="ktsu.Extensions" Version="*" />
     <PackageReference Include="ktsu.Semantics.Paths" Version="*" />
     <PackageReference Include="ktsu.Semantics.Strings" Version="*" />
