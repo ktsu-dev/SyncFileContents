@@ -531,8 +531,8 @@ internal static class SyncFileContents
 		AbsoluteDirectoryPath checkDir = path;
 		while (!checkDir.IsRoot)
 		{
-			AbsoluteFilePath gitFilePath = checkDir / FileName.Create<FileName>(".git");
-			if (gitFilePath.IsFile)
+			string gitDirPath = Path.Combine(checkDir.ToString(), ".git");
+			if (Directory.Exists(gitDirPath))
 			{
 				return true;
 			}
