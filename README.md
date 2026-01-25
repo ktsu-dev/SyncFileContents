@@ -9,7 +9,8 @@
 - Recursively scan a specified directory for files with a given name
 - Support for multiple filenames (comma-separated) and wildcard patterns
 - Compare file contents using SHA256 hashes
-- Display file paths, creation times, and modification times grouped by hash
+- Display file paths grouped by hash with the oldest modification time for each hash group
+- Sort hash groups by modification time (most recent first)
 - Synchronize file contents across different directories within the scanned path
 - Automatically skip files in nested Git repositories (submodules)
 - Commit changes to Git repositories with automatic staging
@@ -87,7 +88,7 @@ dotnet run
 
 1. **Scan**: The application recursively scans the specified directory for files matching the filename pattern
 2. **Compare**: Files are grouped by SHA256 hash to identify differing versions
-3. **Display**: Shows each unique hash with its associated file paths, creation times, and modification times
+3. **Display**: Shows each unique hash with the oldest modification time for that hash group and associated file paths, sorted by modification time (most recent first)
 4. **Select**: If only one file differs, it's automatically selected as the source; otherwise, you enter the hash to use as the sync source
 5. **Preview**: A dry-run shows which files will be updated
 6. **Sync**: After confirmation, files are copied from the source to all destinations

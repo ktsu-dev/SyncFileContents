@@ -17,9 +17,10 @@ SyncFileContents is a .NET 9 console application that synchronizes files with th
 **Core workflow:**
 1. Recursively scans a directory for files matching a given filename pattern
 2. Groups files by SHA256 hash to identify differing versions
-3. Allows user to select a source hash to propagate to all other copies
-4. Commits changes to Git repositories using LibGit2Sharp
-5. Optionally pushes commits to remote repositories
+3. Displays hash groups sorted by oldest modification time (most recent first) with the oldest modification time shown for each group
+4. Allows user to select a source hash to propagate to all other copies
+5. Commits changes to Git repositories using LibGit2Sharp
+6. Optionally pushes commits to remote repositories
 
 ## Architecture
 
