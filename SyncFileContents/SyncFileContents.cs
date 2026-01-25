@@ -387,14 +387,14 @@ internal static class SyncFileContents
 				else
 				{
 					Console.WriteLine("Enter a hash to sync to, or return to continue:");
-					return Console.ReadLine() ?? string.Empty;
+					return (Console.ReadLine() ?? string.Empty).Trim();
 				}
 			}
 		}
 		else
 		{
 			Console.WriteLine("Enter a hash to sync to, or return to continue:");
-			return Console.ReadLine() ?? string.Empty;
+			return (Console.ReadLine() ?? string.Empty).Trim();
 		}
 	}
 
