@@ -6,7 +6,8 @@ namespace ktsu.SyncFileContents;
 
 using CommandLine;
 
-internal class Arguments
+[System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1812:Avoid uninstantiated internal classes", Justification = "Instantiated by CommandLineParser via reflection")]
+internal sealed class Arguments
 {
 	[Value(0, HelpText = "The path to recursively scan in.")]
 	public string Path { get; set; } = string.Empty;
