@@ -1,14 +1,19 @@
-<?xml version="1.0" encoding="utf-8"?>
-<Project Sdk="ktsu.Sdk.App/1.8.0">
+<Project Sdk="Microsoft.NET.Sdk">
+  <Sdk Name="ktsu.Sdk" />
+  <Sdk Name="ktsu.Sdk.ConsoleApp" />
 
   <ItemGroup>
-    <PackageReference Include="CommandLineParser" Version="2.9.1" />
-    <PackageReference Include="ktsu.AppDataStorage" Version="1.15.12" />
-    <PackageReference Include="ktsu.Extensions" Version="*" />
-    <PackageReference Include="ktsu.Semantics.Paths" Version="*" />
-    <PackageReference Include="ktsu.Semantics.Strings" Version="*" />
-    <PackageReference Include="LibGit2Sharp" Version="0.31.0" />
-    <PackageReference Include="PrettyPrompt" Version="4.1.1" />
+    <PackageReference Include="Microsoft.SourceLink.AzureRepos.Git" />
+    <PackageReference Include="Microsoft.SourceLink.GitHub" />
+    <PackageReference Include="Polyfill" />
+    <PackageReference Include="Testably.Abstractions" />
+    <PackageReference Include="CommandLineParser" />
+    <PackageReference Include="ktsu.AppDataStorage" />
+    <PackageReference Include="ktsu.Extensions" />
+    <PackageReference Include="ktsu.Semantics.Paths" />
+    <PackageReference Include="ktsu.Semantics.Strings" />
+    <PackageReference Include="LibGit2Sharp" />
+    <PackageReference Include="PrettyPrompt" />
   </ItemGroup>
 
 </Project>
