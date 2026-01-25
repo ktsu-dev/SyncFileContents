@@ -89,7 +89,7 @@ dotnet run
 1. **Scan**: The application recursively scans the specified directory for files matching the filename pattern
 2. **Compare**: Files are grouped by SHA256 hash to identify differing versions
 3. **Display**: Shows each unique hash with the oldest modification time for that hash group and associated file paths, sorted by modification time (most recent first)
-4. **Select**: If only one file differs, it's automatically selected as the source; otherwise, you enter the hash to use as the sync source
+4. **Select**: If there are exactly two hash groups, the most recent is suggested first, then the older one if declined; otherwise, you enter the hash to use as the sync source
 5. **Preview**: A dry-run shows which files will be updated
 6. **Sync**: After confirmation, files are copied from the source to all destinations
 7. **Commit**: Outstanding changes in Git repositories can be committed

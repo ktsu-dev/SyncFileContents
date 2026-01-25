@@ -261,11 +261,34 @@ internal static class SyncFileContents
 
 						string syncHash;
 
-						KeyValuePair<string, Collection<string>> firstResult = results.First();
-						if (results.Count == 2 && firstResult.Value.Count == 1)
+						if (results.Count == 2)
 						{
-							Console.WriteLine($"Only one file was changed for {uniqueFilename}, assuming you want to propagate that one.");
-							syncHash = firstResult.Key;
+							// Suggest the most recent hash first
+							KeyValuePair<string, Collection<string>> firstResult = results.First();
+							Console.WriteLine($"Suggest most recent hash: {firstResult.Key}? (Y/n)");
+							string? response = Console.ReadLine();
+
+							if (response?.ToUpperInvariant() is "Y" or "")
+							{
+								syncHash = firstResult.Key;
+							}
+							else
+							{
+								// Suggest the older hash
+								KeyValuePair<string, Collection<string>> secondResult = results.Skip(1).First();
+								Console.WriteLine($"Suggest older hash: {secondResult.Key}? (Y/n)");
+								response = Console.ReadLine();
+
+								if (response?.ToUpperInvariant() is "Y" or "")
+								{
+									syncHash = secondResult.Key;
+								}
+								else
+								{
+									Console.WriteLine("Enter a hash to sync to, or return to continue:");
+									syncHash = Console.ReadLine() ?? string.Empty;
+								}
+							}
 						}
 						else
 						{
