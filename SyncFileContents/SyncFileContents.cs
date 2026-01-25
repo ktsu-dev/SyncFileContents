@@ -226,19 +226,34 @@ internal static class SyncFileContents
 					{
 						int padWidth = allDirectories.Max(d => d.Length) + 4;
 
-						results = results.OrderBy(r => r.Value.Count).ToDictionary(r => r.Key, r => r.Value);
-
+						// Calculate oldest modification date for each hash group
+						Dictionary<string, DateTime> oldestModificationDates = [];
 						foreach ((string? hash, Collection<string>? relativeDirectories) in results)
 						{
-							Console.WriteLine();
-							Console.WriteLine($"{hash} {uniqueFilename}");
+							DateTime oldestModified = DateTime.MaxValue;
 							foreach (string dir in relativeDirectories)
 							{
 								string filePath = Path.Combine(path, dir, uniqueFilename);
 								FileInfo fileInfo = new(filePath);
-								DateTime created = fileInfo.CreationTime;
 								DateTime modified = fileInfo.LastWriteTime;
-								Console.WriteLine($"{dir.PadLeft(padWidth)} {created,22} {modified,22}");
+								if (modified < oldestModified)
+								{
+									oldestModified = modified;
+								}
+							}
+							oldestModificationDates[hash] = oldestModified;
+						}
+
+						// Sort by oldest modification date (most recent first)
+						results = results.OrderByDescending(r => oldestModificationDates[r.Key]).ToDictionary(r => r.Key, r => r.Value);
+
+						foreach ((string? hash, Collection<string>? relativeDirectories) in results)
+						{
+							Console.WriteLine();
+							Console.WriteLine($"{hash} {uniqueFilename} ({oldestModificationDates[hash]})");
+							foreach (string dir in relativeDirectories)
+							{
+								Console.WriteLine($"{dir.PadLeft(padWidth)}");
 							}
 						}
 
@@ -419,6 +434,8 @@ internal static class SyncFileContents
 						string directoryPath = Path.Combine(path, dir);
 						string repoPath = Repository.Discover(directoryPath);
 
+						// For GitHub PATs, use the token as the password with the username as-is
+						// For other providers, this should also work as they typically ignore username when token is valid
 						UsernamePasswordCredentials credentials = new()
 						{
 							Username = Settings.Username,
@@ -444,6 +461,7 @@ internal static class SyncFileContents
 							Remote remote = repo.Network.Remotes["origin"];
 							IEnumerable<string> refSpecs = remote.FetchRefSpecs.Select(x => x.Specification);
 
+							// Use the same credentials for fetching
 							FetchOptions fetchOptions = new()
 							{
 								CredentialsProvider = (url, user, creds) => credentials,
