@@ -1,3 +1,8 @@
+## v1.2.10-pre.1 (prerelease)
+
+Changes since v1.2.9:
+
+- Bump the ktsu group with 7 updates ([@dependabot[bot]](https://github.com/dependabot[bot]))
 ## v1.2.9 (patch)
 
 Changes since v1.2.8:
@@ -27,10 +32,7 @@ Changes since v1.2.9-pre.1:
 - Bump Testably.Abstractions from 9.0.0 to 10.0.0 ([@dependabot[bot]](https://github.com/dependabot[bot]))
 ## v1.2.9-pre.1 (prerelease)
 
-Changes since v1.2.8:
-
-- Sync scripts\update-winget-manifests.ps1 ([@ktsu[bot]](https://github.com/ktsu[bot]))
-- Merge remote-tracking branch 'refs/remotes/origin/main' ([@ktsu[bot]](https://github.com/ktsu[bot]))
+Incremental prerelease update.
 ## v1.2.8 (patch)
 
 Changes since v1.2.7:
