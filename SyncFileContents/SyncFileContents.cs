@@ -366,10 +366,10 @@ internal static class SyncFileContents
 		{
 			// Suggest the most recent hash first
 			KeyValuePair<string, Collection<string>> firstResult = results.First();
-			Console.WriteLine($"Suggest most recent hash: {firstResult.Key}? (Y/n)");
+			Console.WriteLine($"Suggest most recent hash: {firstResult.Key}? (y/N)");
 			string? response = Console.ReadLine();
 
-			if (response?.ToUpperInvariant() is "Y" or "")
+			if (response?.ToUpperInvariant() is "Y")
 			{
 				return firstResult.Key;
 			}
@@ -377,10 +377,10 @@ internal static class SyncFileContents
 			{
 				// Suggest the older hash
 				KeyValuePair<string, Collection<string>> secondResult = results.Skip(1).First();
-				Console.WriteLine($"Suggest older hash: {secondResult.Key}? (Y/n)");
+				Console.WriteLine($"Suggest older hash: {secondResult.Key}? (y/N)");
 				response = Console.ReadLine();
 
-				if (response?.ToUpperInvariant() is "Y" or "")
+				if (response?.ToUpperInvariant() is "Y")
 				{
 					return secondResult.Key;
 				}
