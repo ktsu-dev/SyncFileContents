@@ -1,8 +1,8 @@
-## v1.2.10-pre.2 (prerelease)
+## v1.2.10 (patch)
 
-Changes since v1.2.10-pre.1:
+Changes since v1.2.9:
 
-- Sync COPYRIGHT.md ([@ktsu[bot]](https://github.com/ktsu[bot]))
-- Sync scripts\PSBuild.psm1 ([@ktsu[bot]](https://github.com/ktsu[bot]))
-- Sync global.json ([@ktsu[bot]](https://github.com/ktsu[bot]))
-- Sync scripts\update-winget-manifests.ps1 ([@ktsu[bot]](https://github.com/ktsu[bot]))
+- Refine user prompts for hash suggestions to indicate default responses ([@matt-edmondson](https://github.com/matt-edmondson))
+- Add cancellation support to Main method for graceful shutdown ([@matt-edmondson](https://github.com/matt-edmondson))
+- Refactor user prompts for sync, commit, and push actions to improve clarity ([@matt-edmondson](https://github.com/matt-edmondson))
+- Merge remote-tracking branch 'refs/remotes/origin/main' ([@matt-edmondson](https://github.com/matt-edmondson))
