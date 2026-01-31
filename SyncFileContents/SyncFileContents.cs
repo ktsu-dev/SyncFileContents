@@ -30,6 +30,8 @@ internal static class SyncFileContents
 
 	private static async Task Main(string[] args)
 	{
+		Console.CancelKeyPress += (sender, e) => Environment.Exit(0);
+
 		Settings = Settings.LoadOrCreate();
 
 		GlobalSettings.LogConfiguration = new(LogLevel.Info, new((level, message) =>
