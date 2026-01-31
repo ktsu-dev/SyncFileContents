@@ -422,7 +422,7 @@ internal static class SyncFileContents
 			}
 
 			Console.WriteLine();
-			Console.WriteLine("Enter Y to sync.");
+			Console.WriteLine("Sync? (y/N)");
 
 			if (Console.ReadLine()?.ToUpperInvariant() == "Y")
 			{
@@ -473,7 +473,7 @@ internal static class SyncFileContents
 		if (commitFiles.Count > 0)
 		{
 			Console.WriteLine();
-			Console.WriteLine("Enter Y to commit.");
+			Console.WriteLine("Commit? (y/N)");
 
 			if (Console.ReadLine()?.ToUpperInvariant() == "Y")
 			{
@@ -553,7 +553,7 @@ internal static class SyncFileContents
 		if (pushDirectories.Count > 0)
 		{
 			Console.WriteLine();
-			Console.WriteLine("Enter Y to push.");
+			Console.WriteLine("Push? (y/N)");
 
 			if (Console.ReadLine()?.ToUpperInvariant() == "Y")
 			{
