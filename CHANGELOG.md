@@ -1,6 +1,8 @@
-## v1.2.10
+## v1.2.11-pre.1 (prerelease)
 
-No significant changes detected since v1.2.10.
+Changes since v1.2.10:
+
+- Sync global.json ([@ktsu[bot]](https://github.com/ktsu[bot]))
 ## v1.2.10 (patch)
 
 Changes since v1.2.9:
