@@ -1,3 +1,9 @@
+## v1.2.12 (patch)
+
+Changes since v1.2.11:
+
+- Remove legacy build scripts ([@matt-edmondson](https://github.com/matt-edmondson))
+
 ## v1.2.11 (patch)
 
 Changes since v1.2.10:
@@ -64,9 +70,7 @@ Changes since v1.2.11-pre.1:
 
 ## v1.2.11-pre.1 (prerelease)
 
-Changes since v1.2.10:
-
-- Sync global.json ([@ktsu[bot]](https://github.com/ktsu[bot]))
+No significant changes detected since v1.2.11.
 
 ## v1.2.10 (patch)
 
