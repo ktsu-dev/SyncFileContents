@@ -1,3 +1,7 @@
+## v1.2.13
+
+No significant changes detected since v1.2.13.
+
 ## v1.2.13 (patch)
 
 Changes since v1.2.12:
@@ -10,11 +14,7 @@ Changes since v1.2.12:
 
 ## v1.2.13-pre.1 (prerelease)
 
-Changes since v1.2.12:
-
-- Sync .github\workflows\dotnet.yml ([@ktsu[bot]](https://github.com/ktsu[bot]))
-- Sync .github\workflows\dotnet.yml ([@ktsu[bot]](https://github.com/ktsu[bot]))
-- Sync .github\workflows\dotnet.yml ([@ktsu[bot]](https://github.com/ktsu[bot]))
+No significant changes detected since v1.2.13.
 
 ## v1.2.12 (patch)
 
