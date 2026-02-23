@@ -58,7 +58,7 @@
     <PackageVersion Include="Spectre.Console.Testing" Version="0.50.0" />
     <PackageVersion Include="System.Memory" Version="4.6.3" />
     <PackageVersion Include="System.Threading.Tasks.Extensions" Version="4.6.3" />
-    <PackageVersion Include="Testably.Abstractions" Version="10.0.0" />
+    <PackageVersion Include="Testably.Abstractions" Version="10.1.0" />
     <PackageVersion Include="TestableIO.System.IO.Abstractions" Version="22.0.14" />
     <PackageVersion Include="TestableIO.System.IO.Abstractions.TestingHelpers" Version="22.0.14" />
     <PackageVersion Include="TestableIO.System.IO.Abstractions.Wrappers" Version="22.0.14" />
