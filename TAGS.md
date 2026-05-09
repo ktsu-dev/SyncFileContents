@@ -1,0 +1,1 @@
+sync file contents;file synchronization;sha256;duplicate files;git integration;multi directory;cli;dotnet;csharp
