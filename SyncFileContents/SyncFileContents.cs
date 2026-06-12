@@ -286,7 +286,7 @@ internal static class SyncFileContents
 
 		if (results.Count > 1)
 		{
-			await HandleMultipleHashGroupsAsync(results, uniqueFilename, path, allDirectories).ConfigureAwait(false);
+			HandleMultipleHashGroups(results, uniqueFilename, path, allDirectories);
 		}
 		else if (results.Count == 1)
 		{
@@ -294,7 +294,7 @@ internal static class SyncFileContents
 		}
 	}
 
-	private static async Task HandleMultipleHashGroupsAsync(
+	private static void HandleMultipleHashGroups(
 		Dictionary<string, Collection<string>> results,
 		string uniqueFilename,
 		string path,
@@ -310,11 +310,11 @@ internal static class SyncFileContents
 
 		DisplayHashGroups(results, uniqueFilename, oldestModificationDates, padWidth);
 
-		string syncHash = await PromptForSyncHashAsync(results).ConfigureAwait(false);
+		string syncHash = PromptForSyncHash(results);
 
 		if (!string.IsNullOrWhiteSpace(syncHash))
 		{
-			await SyncFilesToHashAsync(syncHash, results, uniqueFilename, path).ConfigureAwait(false);
+			SyncFilesToHash(syncHash, results, uniqueFilename, path);
 		}
 	}
 
@@ -362,7 +362,7 @@ internal static class SyncFileContents
 		Console.WriteLine();
 	}
 
-	private static async Task<string> PromptForSyncHashAsync(Dictionary<string, Collection<string>> results)
+	private static string PromptForSyncHash(Dictionary<string, Collection<string>> results)
 	{
 		if (results.Count == 2)
 		{
@@ -400,7 +400,7 @@ internal static class SyncFileContents
 		}
 	}
 
-	private static async Task SyncFilesToHashAsync(
+	private static void SyncFilesToHash(
 		string syncHash,
 		Dictionary<string, Collection<string>> results,
 		string uniqueFilename,
