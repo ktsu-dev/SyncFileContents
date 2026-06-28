@@ -1,7 +1,8 @@
-## v1.2.44 (patch)
+## v1.2.45 (patch)
 
-Changes since v1.2.43:
+Changes since v1.2.44:
 
-- Remove unused Microsoft.SourceLink packages from Directory.Packages.props ([@matt-edmondson](https://github.com/matt-edmondson))
-- Remove unused package references from project files ([@matt-edmondson](https://github.com/matt-edmondson))
+- Merge remote-tracking branch 'refs/remotes/origin/main' ([@ktsu[bot]](https://github.com/ktsu[bot]))
+- Sync .github\workflows\dotnet.yml ([@ktsu[bot]](https://github.com/ktsu[bot]))
+- Sync global.json ([@ktsu[bot]](https://github.com/ktsu[bot]))
 
