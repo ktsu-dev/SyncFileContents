@@ -4,8 +4,8 @@
   </PropertyGroup>
   <ItemGroup>
     <PackageVersion Include="CommandLineParser" Version="2.9.1" />
-    <PackageVersion Include="ktsu.AppDataStorage" Version="1.16.25" />
-    <PackageVersion Include="ktsu.Extensions" Version="1.5.22" />
+    <PackageVersion Include="ktsu.AppDataStorage" Version="1.16.26" />
+    <PackageVersion Include="ktsu.Extensions" Version="1.5.23" />
     <PackageVersion Include="ktsu.Semantics.Paths" Version="2.3.0" />
     <PackageVersion Include="ktsu.Semantics.Strings" Version="2.3.0" />
     <PackageVersion Include="LibGit2Sharp" Version="0.31.0" />
