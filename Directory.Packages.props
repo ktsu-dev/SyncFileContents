@@ -20,6 +20,6 @@
     <PackageVersion Include="PrettyPrompt" Version="6.0.4" />
     <PackageVersion Include="System.Memory" Version="4.6.3" />
     <PackageVersion Include="System.Threading.Tasks.Extensions" Version="4.6.3" />
-    <PackageVersion Include="Testably.Abstractions" Version="10.2.0" />
+    <PackageVersion Include="Testably.Abstractions" Version="10.3.0" />
   </ItemGroup>
 </Project>
