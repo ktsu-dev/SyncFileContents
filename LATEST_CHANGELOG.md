@@ -1,7 +1,7 @@
-## v1.2.65 (patch)
+## v1.2.66 (patch)
 
-Changes since v1.2.64:
+Changes since v1.2.65:
 
-- Bump LibGit2Sharp from 0.31.0 to 0.32.0 ([@dependabot[bot]](https://github.com/dependabot[bot]))
+- Bump MSTest.Sdk from 4.3.2 to 4.3.3 ([@dependabot[bot]](https://github.com/dependabot[bot]))
 - Bump the ktsu group with 2 updates ([@dependabot[bot]](https://github.com/dependabot[bot]))
 
