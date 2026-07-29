@@ -5,9 +5,9 @@
   <ItemGroup>
     <PackageVersion Include="CommandLineParser" Version="2.9.1" />
     <PackageVersion Include="ktsu.AppDataStorage" Version="1.16.33" />
-    <PackageVersion Include="ktsu.Extensions" Version="1.5.30" />
-    <PackageVersion Include="ktsu.Semantics.Paths" Version="2.7.9" />
-    <PackageVersion Include="ktsu.Semantics.Strings" Version="2.7.9" />
+    <PackageVersion Include="ktsu.Extensions" Version="1.5.31" />
+    <PackageVersion Include="ktsu.Semantics.Paths" Version="2.7.10" />
+    <PackageVersion Include="ktsu.Semantics.Strings" Version="2.7.10" />
     <PackageVersion Include="LibGit2Sharp" Version="0.32.0" />
     <PackageVersion Include="Microsoft.Testing.Extensions.CodeCoverage" Version="17.14.2" />
     <PackageVersion Include="Microsoft.Testing.Extensions.CrashDump" Version="1.7.2" />
