@@ -1,6 +1,7 @@
-## v1.2.72 (patch)
+## v1.2.73 (patch)
 
-Changes since v1.2.71:
+Changes since v1.2.72:
 
-- Bump the ktsu group with 11 updates ([@dependabot[bot]](https://github.com/dependabot[bot]))
+- Sync .github\workflows\dotnet.yml ([@ktsu[bot]](https://github.com/ktsu[bot]))
+- Sync global.json ([@ktsu[bot]](https://github.com/ktsu[bot]))
 
