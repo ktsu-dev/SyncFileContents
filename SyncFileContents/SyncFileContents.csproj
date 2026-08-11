@@ -10,7 +10,7 @@
     <PackageReference Include="ktsu.Extensions" />
     <PackageReference Include="ktsu.Semantics.Paths" />
     <PackageReference Include="ktsu.Semantics.Strings" />
-    <PackageReference Include="LibGit2Sharp" />
+    <PackageReference Include="ktsu.RunCommand" />
     <PackageReference Include="PrettyPrompt" />
   </ItemGroup>
 

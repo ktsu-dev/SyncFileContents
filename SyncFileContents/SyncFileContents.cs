@@ -1,6 +1,4 @@
-// Copyright (c) ktsu.dev
-// All rights reserved.
-// Licensed under the MIT license.
+// Copyright (c) 2023-2026 ktsu-dev contributors
 
 [assembly: CLSCompliant(true)]
 [assembly: System.Runtime.InteropServices.ComVisible(false)]
@@ -20,8 +18,6 @@ using CommandLine;
 using ktsu.Extensions;
 using ktsu.Semantics.Paths;
 
-using LibGit2Sharp;
-
 using PrettyPrompt;
 
 internal static class SyncFileContents
@@ -33,12 +29,6 @@ internal static class SyncFileContents
 		Console.CancelKeyPress += (sender, e) => Environment.Exit(0);
 
 		Settings = Settings.LoadOrCreate();
-
-		GlobalSettings.LogConfiguration = new(LogLevel.Info, new((level, message) =>
-		{
-			string logMessage = $"[{level}] {message}";
-			Console.WriteLine($"Git: {logMessage}");
-		}));
 
 		_ = await Parser.Default.ParseArguments<Arguments>(args).WithParsedAsync(Sync).ConfigureAwait(false);
 	}
@@ -53,8 +43,6 @@ internal static class SyncFileContents
 		{
 			try
 			{
-				await EnsureCredentialsAsync();
-
 				string applicationDataPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), nameof(SyncFileContents));
 				_ = Directory.CreateDirectory(applicationDataPath);
 
@@ -76,9 +64,9 @@ internal static class SyncFileContents
 
 				(HashSet<string> commitDirectories, HashSet<string> expandedFilesToSync) = await FindAndSyncFilesAsync(filesToSync, path).ConfigureAwait(false);
 
-				CommitChangedFiles(commitDirectories, expandedFilesToSync, path);
+				await CommitChangedFilesAsync(commitDirectories, expandedFilesToSync, path).ConfigureAwait(false);
 
-				PushToRemote(commitDirectories, path);
+				await PushToRemoteAsync(commitDirectories, path).ConfigureAwait(false);
 
 				Console.WriteLine();
 				Console.WriteLine("Press any key...");
@@ -94,54 +82,6 @@ internal static class SyncFileContents
 			}
 		}
 		while (string.IsNullOrWhiteSpace(args.Path) || string.IsNullOrWhiteSpace(args.Filename));
-	}
-
-	[System.Diagnostics.CodeAnalysis.SuppressMessage("Reliability", "CA2007:Consider calling ConfigureAwait on the awaited task", Justification = "Console UI method where synchronization context is not relevant")]
-	private static async Task EnsureCredentialsAsync()
-	{
-		if (string.IsNullOrEmpty(Settings.Username))
-		{
-			Console.WriteLine("Enter your git username:");
-			await using Prompt prompt = new();
-
-			while (true)
-			{
-				PromptResult response = await prompt.ReadLineAsync().ConfigureAwait(false);
-				if (response.IsSuccess)
-				{
-					Settings.Username = response.Text;
-					Settings.Save();
-					break;
-				}
-
-				if (response.CancellationToken.IsCancellationRequested)
-				{
-					throw new OperationCanceledException("User aborted credential entry.");
-				}
-			}
-		}
-
-		if (string.IsNullOrEmpty(Settings.Token))
-		{
-			Console.WriteLine("Enter your git token:");
-			await using Prompt prompt = new();
-
-			while (true)
-			{
-				PromptResult response = await prompt.ReadLineAsync().ConfigureAwait(false);
-				if (response.IsSuccess)
-				{
-					Settings.Token = response.Text;
-					Settings.Save();
-					break;
-				}
-
-				if (response.CancellationToken.IsCancellationRequested)
-				{
-					throw new OperationCanceledException("User aborted credential entry.");
-				}
-			}
-		}
 	}
 
 	[System.Diagnostics.CodeAnalysis.SuppressMessage("Reliability", "CA2007:Consider calling ConfigureAwait on the awaited task", Justification = "Console UI method where synchronization context is not relevant")]
@@ -443,7 +383,7 @@ internal static class SyncFileContents
 		}
 	}
 
-	private static void CommitChangedFiles(
+	private static async Task CommitChangedFilesAsync(
 		HashSet<string> commitDirectories,
 		HashSet<string> expandedFilesToSync,
 		string path)
@@ -455,15 +395,20 @@ internal static class SyncFileContents
 		foreach (string dir in commitDirectories)
 		{
 			string directoryPath = Path.Combine(path, dir);
-			string repoPath = Repository.Discover(directoryPath);
-			if (repoPath?.EndsWith(".git\\", StringComparison.Ordinal) ?? false)
+			string repoRoot = await GitCli.DiscoverRootAsync(directoryPath).ConfigureAwait(false);
+			if (!string.IsNullOrEmpty(repoRoot))
 			{
-				using Repository repo = new(repoPath);
 				foreach (string uniqueFilename in expandedFilesToSync)
 				{
 					string filePath = Path.Combine(directoryPath, uniqueFilename);
-					FileStatus fileStatus = repo.RetrieveStatus(filePath);
-					if (fileStatus is FileStatus.ModifiedInWorkdir or FileStatus.NewInWorkdir)
+
+					// --porcelain prints nothing for a path that matches HEAD, so any output means
+					// the file is either modified or untracked.
+					GitResult status = await GitCli
+						.RunInAsync(repoRoot, "status", "--porcelain", "--", filePath)
+						.ConfigureAwait(false);
+
+					if (status.Succeeded && status.OutputText.Length > 0)
 					{
 						commitFiles.Add(filePath);
 						Console.WriteLine($"{filePath} has outstanding changes");
@@ -482,73 +427,93 @@ internal static class SyncFileContents
 				Console.WriteLine();
 				foreach (string filePath in commitFiles)
 				{
-					CommitFile(filePath);
+					await CommitFileAsync(filePath).ConfigureAwait(false);
 				}
 			}
 		}
 	}
 
-	private static void CommitFile(string filePath)
+	private static async Task CommitFileAsync(string filePath)
 	{
 		Console.WriteLine($"Committing: {filePath}");
-		string repoPath = Repository.Discover(filePath);
-		if (!string.IsNullOrEmpty(repoPath))
+
+		string repoRoot = await GitCli.DiscoverRootAsync(filePath).ConfigureAwait(false);
+		if (string.IsNullOrEmpty(repoRoot))
 		{
-			using Repository repo = new(repoPath);
-			string relativeFilePath = filePath.Replace(repoPath.Replace(".git\\", "", StringComparison.Ordinal), "", StringComparison.Ordinal);
-			repo.Index.Add(relativeFilePath);
-			repo.Index.Write();
-			try
-			{
-				_ = repo.Commit($"Sync {relativeFilePath}", new Signature(nameof(SyncFileContents), nameof(SyncFileContents), DateTimeOffset.Now), new Signature(nameof(SyncFileContents), nameof(SyncFileContents), DateTimeOffset.Now));
-			}
-			catch (EmptyCommitException)
-			{
-			}
-			catch (UnmergedIndexEntriesException)
-			{
-			}
+			return;
+		}
+
+		// Staging through git, rather than writing the index directly, is what lets the clean
+		// filter run so an LFS-tracked file is committed as a pointer instead of raw bytes.
+		GitResult staged = await GitCli.RunInAsync(repoRoot, "add", "--", filePath).ConfigureAwait(false);
+		if (!staged.Succeeded)
+		{
+			Console.WriteLine($"Failed to stage: {staged.FailureText}");
+			return;
+		}
+
+		string relativeFilePath = Path.GetRelativePath(repoRoot, filePath);
+
+		// The identity is supplied per invocation so the commit is attributed to the tool without
+		// depending on, or disturbing, the repository's own configuration.
+		GitResult committed = await GitCli
+			.RunInAsync(
+				repoRoot,
+				"-c", $"user.name={nameof(SyncFileContents)}",
+				"-c", $"user.email={nameof(SyncFileContents)}",
+				"commit",
+				"-m", $"Sync {relativeFilePath}",
+				"--", filePath)
+			.ConfigureAwait(false);
+
+		// A file already matching HEAD leaves nothing staged, which git reports as a failure but
+		// is the ordinary no-op case here.
+		if (!committed.Succeeded
+			&& !committed.Output.Contains("nothing to commit", StringComparison.OrdinalIgnoreCase)
+			&& !committed.Output.Contains("nothing added to commit", StringComparison.OrdinalIgnoreCase))
+		{
+			Console.WriteLine($"Failed to commit: {committed.FailureText}");
 		}
 	}
 
-	private static void PushToRemote(HashSet<string> commitDirectories, string path)
+	private static async Task PushToRemoteAsync(HashSet<string> commitDirectories, string path)
 	{
 		Collection<string> pushDirectories = [];
-		IEnumerable<string> commitRepos = commitDirectories.Select(f => Repository.Discover(Path.Combine(path, f))).Distinct();
-		foreach (string repoPath in commitRepos)
+		HashSet<string> seenRoots = [];
+
+		foreach (string dir in commitDirectories)
 		{
-			if (!string.IsNullOrEmpty(repoPath) && repoPath.EndsWith(".git\\", StringComparison.Ordinal))
+			string repoRoot = await GitCli.DiscoverRootAsync(Path.Combine(path, dir)).ConfigureAwait(false);
+			if (string.IsNullOrEmpty(repoRoot) || !seenRoots.Add(repoRoot))
 			{
-				using Repository repo = new(repoPath);
-				string repoRoot = repoPath.Replace(".git\\", "", StringComparison.Ordinal);
-				Branch localBranch = repo.Branches[repo.Head.FriendlyName];
-				int aheadBy = localBranch?.TrackingDetails.AheadBy ?? 0;
+				continue;
+			}
 
-				int commitIndex = 0;
-				bool canPush = true;
-				foreach (Commit? commit in repo.Head.Commits)
-				{
-					if (commitIndex < aheadBy)
-					{
-						if (commit.Author.Name != nameof(SyncFileContents))
-						{
-							canPush = false;
-							break;
-						}
-					}
-					else
-					{
-						break;
-					}
+			// @{u} is the configured upstream. Without one, rev-list fails and there is nothing
+			// meaningful to push, so treat that as zero commits ahead.
+			GitResult ahead = await GitCli
+				.RunInAsync(repoRoot, "rev-list", "--count", "@{u}..HEAD")
+				.ConfigureAwait(false);
 
-					++commitIndex;
-				}
+			if (!ahead.Succeeded || !int.TryParse(ahead.OutputText, out int aheadBy) || aheadBy == 0)
+			{
+				continue;
+			}
 
-				if (aheadBy > 0 && canPush)
-				{
-					pushDirectories.Add(repoRoot);
-					Console.WriteLine($"{repoRoot} can be pushed automatically");
-				}
+			// Only push when every unpushed commit is one this tool made, so a user's own work is
+			// never pushed on their behalf.
+			GitResult authors = await GitCli
+				.RunInAsync(repoRoot, "log", "--format=%an", $"-{aheadBy}", "HEAD")
+				.ConfigureAwait(false);
+
+			bool canPush = authors.Succeeded
+				&& authors.OutputLines.Count == aheadBy
+				&& authors.OutputLines.TrueForAll(author => author == nameof(SyncFileContents));
+
+			if (canPush)
+			{
+				pushDirectories.Add(repoRoot);
+				Console.WriteLine($"{repoRoot} can be pushed automatically");
 			}
 		}
 
@@ -560,94 +525,39 @@ internal static class SyncFileContents
 			if (Console.ReadLine()?.ToUpperInvariant() == "Y")
 			{
 				Console.WriteLine();
-				foreach (string dir in pushDirectories)
+				foreach (string repoRoot in pushDirectories)
 				{
-					PushDirectory(dir, path);
+					await PushDirectoryAsync(repoRoot).ConfigureAwait(false);
 				}
 			}
 		}
 	}
 
-	private static void PushDirectory(string dir, string path)
+	private static async Task PushDirectoryAsync(string repoRoot)
 	{
-		Console.WriteLine($"Pushing: {dir}");
-		string directoryPath = Path.Combine(path, dir);
-		string repoPath = Repository.Discover(directoryPath);
+		Console.WriteLine($"Pushing: {repoRoot}");
 
-		UsernamePasswordCredentials credentials = new()
+		// Credentials are left to git, which uses the platform credential helper. That removes the
+		// need to prompt for a token and store it, and it means SSH remotes work too.
+		Console.WriteLine("Checking for remote changes...");
+		GitResult pull = await GitCli.RunInAsync(repoRoot, "pull", "--ff-only").ConfigureAwait(false);
+		if (!pull.Succeeded)
 		{
-			Username = Settings.Username,
-			Password = Settings.Token,
-		};
-
-		PushOptions pushOptions = new()
-		{
-			CredentialsProvider = (url, user, creds) => credentials,
-			OnPushStatusError = (pushStatusErrors) => Console.WriteLine($"Error pushing: {pushStatusErrors.Message}"),
-			OnPushTransferProgress = (current, total, bytes) =>
-			{
-				Console.WriteLine($"Progress: {current} / {total} ({bytes} bytes)");
-				return true;
-			},
-		};
-
-		using Repository repo = new(repoPath);
-		try
-		{
-			Console.WriteLine("Checking for remote changes...");
-			Remote remote = repo.Network.Remotes["origin"];
-			IEnumerable<string> refSpecs = remote.FetchRefSpecs.Select(x => x.Specification);
-
-			FetchOptions fetchOptions = new()
-			{
-				CredentialsProvider = (url, user, creds) => credentials,
-			};
-
-			try
-			{
-				Commands.Fetch(repo, remote.Name, refSpecs, fetchOptions, "Fetched latest changes");
-
-				Branch trackingBranch = repo.Head.TrackedBranch;
-				if (trackingBranch != null)
-				{
-					Commit remoteBranchTip = trackingBranch.Tip;
-					MergeResult mergeResult = repo.Merge(trackingBranch, new Signature(nameof(SyncFileContents), nameof(SyncFileContents), DateTimeOffset.Now));
-
-					if (mergeResult.Status == MergeStatus.UpToDate)
-					{
-						Console.WriteLine("Local branch is up to date with remote.");
-					}
-					else if (mergeResult.Status == MergeStatus.FastForward)
-					{
-						Console.WriteLine("Fast-forwarded local branch to remote changes.");
-					}
-					else if (mergeResult.Status == MergeStatus.NonFastForward)
-					{
-						Console.WriteLine("Merged remote changes with local branch (non-fast-forward).");
-					}
-					else if (mergeResult.Status == MergeStatus.Conflicts)
-					{
-						Console.WriteLine("Cannot automatically merge due to conflicts. Please resolve conflicts manually.");
-						return;
-					}
-				}
-			}
-			catch (LibGit2SharpException ex)
-			{
-				Console.WriteLine($"Error during pull: {ex.Message}");
-				if (ex.InnerException != null)
-				{
-					Console.WriteLine($"Inner error: {ex.InnerException.Message}");
-				}
-
-				Console.WriteLine("Continuing with push...");
-			}
-
-			repo.Network.Push(repo.Head, pushOptions);
+			Console.WriteLine($"Error during pull: {pull.FailureText}");
+			Console.WriteLine("Skipping push so a divergent branch is resolved manually.");
+			return;
 		}
-		catch (LibGit2SharpException e)
+
+		// Pushing through git runs the LFS pre-push hook, which uploads the objects that the
+		// committed pointers refer to.
+		GitResult push = await GitCli.RunInAsync(repoRoot, "push").ConfigureAwait(false);
+		if (push.Succeeded)
 		{
-			Console.WriteLine($"Error pushing: {e.Message}");
+			Console.WriteLine($"Successfully pushed: {repoRoot}");
+		}
+		else
+		{
+			Console.WriteLine($"Error pushing: {push.FailureText}");
 		}
 	}
 
