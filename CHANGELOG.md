@@ -3,6 +3,7 @@
 Changes since v1.2.73:
 
 - Sync global.json ([@KtsuTools](https://github.com/KtsuTools))
+- Sync global.json ([@KtsuTools](https://github.com/KtsuTools))
 
 ## v1.2.73 (patch)
 
