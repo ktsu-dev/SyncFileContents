@@ -1,11 +1,7 @@
-## v1.2.74 (patch)
+## v1.2.75 (patch)
 
-Changes since v1.2.73:
+Changes since v1.2.74:
 
-- Fix build errors from ktsu.Sdk analyzer updates (IDE0073 headers, IDE0055 line endings, KTSU0007 Polyfill PrivateAssets) [patch] ([@matt-edmondson](https://github.com/matt-edmondson))
-- Sync .runsettings ([@KtsuTools](https://github.com/KtsuTools))
-- Sync .editorconfig ([@KtsuTools](https://github.com/KtsuTools))
-- Sync .gitattributes ([@KtsuTools](https://github.com/KtsuTools))
-- Sync global.json ([@KtsuTools](https://github.com/KtsuTools))
-- Sync global.json ([@KtsuTools](https://github.com/KtsuTools))
+- Bump PrettyPrompt from 6.0.4 to 6.0.5 ([@dependabot[bot]](https://github.com/dependabot[bot]))
+- Bump the ktsu group with 4 updates ([@dependabot[bot]](https://github.com/dependabot[bot]))
 
