@@ -5,7 +5,7 @@
 [![License](https://img.shields.io/github/license/ktsu-dev/SyncFileContents.svg?label=License&logo=nuget)](LICENSE.md)
 [![GitHub commit activity](https://img.shields.io/github/commit-activity/m/ktsu-dev/SyncFileContents?label=Commits&logo=github)](https://github.com/ktsu-dev/SyncFileContents/commits/main)
 [![GitHub contributors](https://img.shields.io/github/contributors/ktsu-dev/SyncFileContents?label=Contributors&logo=github)](https://github.com/ktsu-dev/SyncFileContents/graphs/contributors)
-[![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/ktsu-dev/SyncFileContents/dotnet.yml?label=Build&logo=github)](https://github.com/ktsu-dev/SyncFileContents/actions)
+[![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/ktsu-dev/SyncFileContents/dotnet.yml?branch=main&label=Build&logo=github)](https://github.com/ktsu-dev/SyncFileContents/actions)
 
 `SyncFileContents` is a .NET 9 console application that scans a directory for files with a specified name, compares their contents using SHA256 hashes, and allows the user to synchronize these files across the directory. It also provides Git integration for committing and pushing changes.
 ## Features
