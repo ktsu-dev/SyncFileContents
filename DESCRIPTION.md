@@ -1,1 +1,1 @@
-SyncFileContents
+A .NET console application that finds files sharing a given name across a directory tree, compares their contents by SHA256 hash, and synchronizes them to a single chosen version. Supports multiple filenames and wildcard patterns, groups paths by hash with modification times, automatically skips nested Git repositories, and integrates with Git to stage, commit, fetch, merge, and push the resulting changes using persistent credentials.
