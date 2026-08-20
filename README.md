@@ -1,5 +1,17 @@
 # SyncFileContents
 
+> [!WARNING]
+> **This repository is archived and no longer maintained.**
+>
+> Its functionality has moved to **[ktsu-dev/KtsuTools](https://github.com/ktsu-dev/KtsuTools)** as the `ktsu sync` command, which is a direct port with the same `--path` / `--filename` shape plus multi-filename support and `--auto-push`.
+>
+> For the interactive, iterative-merge take on the same problem, see **[ktsu-dev/BlastMerge](https://github.com/ktsu-dev/BlastMerge)** (published as `ktsu.BlastMerge`), which additionally supports directory exclusion and saved batch configurations.
+>
+> The open feature requests were migrated to KtsuTools issues [#125](https://github.com/ktsu-dev/KtsuTools/issues/125) (commit to a new branch), [#126](https://github.com/ktsu-dev/KtsuTools/issues/126) (open a PR per synced branch), [#127](https://github.com/ktsu-dev/KtsuTools/issues/127) (explicit repo lists and exclusions) and [#128](https://github.com/ktsu-dev/KtsuTools/issues/128) (config from file).
+>
+> This code was never published to nuget.org. It remains readable here for reference.
+
+
 ![GitHub branch status](https://img.shields.io/github/checks-status/ktsu-dev/SyncFileContents/main)
 
 [![License](https://img.shields.io/github/license/ktsu-dev/SyncFileContents.svg?label=License&logo=nuget)](LICENSE.md)
